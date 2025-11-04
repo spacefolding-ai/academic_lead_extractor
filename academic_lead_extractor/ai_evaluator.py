@@ -119,14 +119,20 @@ async def ai_evaluate_contacts(contacts: List[Dict], use_ai: bool, client, ai_mo
         items = []
         for idx, c in enumerate(batch):
             page_text = c.get("page_text", "")
-            # Include page text up to 3000 chars, but ensure we have some context
+            # Include page text up to 10000 chars for better context
             text_snippet = page_text[:10000] if page_text else ""
+            
+            # Combine Title and Role if available, fallback to Title_role for backward compatibility
+            title = c.get("Title", "")
+            role = c.get("Role", "")
+            title_role_combined = f"{title}, {role}".strip(", ") if title or role else c.get("Title_role", "")
             
             items.append({
                 "id": idx,
                 "name": c.get("Full_name", "Unknown"),
                 "email": c.get("Email", ""),
-                "title": c.get("Title_role", "Academic Staff"),
+                "title": title,
+                "role": role or title_role_combined,
                 "text": text_snippet
             })
             
@@ -148,6 +154,7 @@ Return a JSON object with a "contacts" array. Each contact should have:
 - reason (string, brief explanation)
 - field (string, specific technical domain)
 - cleaned_name (string, extract and clean the person's name from the input)
+- role (string, extract and clean the person's role/position from the text - e.g., "Head of Research Group", "Professor", "Group Leader")
 
 NAME CLEANING RULES:
 - Extract only the person's actual name (first and last name)
@@ -161,6 +168,16 @@ NAME CLEANING RULES:
 - Example: "Dr. Jörg Matthes, Bitte" → "Dr. Jörg Matthes"
 - Example: "Frau Christine Bender, E-Mail:" → "Christine Bender"
 - Example: "Dr. Henning Meyerhenke, (Tel." → "Dr. Henning Meyerhenke"
+
+ROLE EXTRACTION RULES:
+- Extract detailed position/role information from the provided text
+- Include department/institute name if mentioned
+- Examples:
+  * "Head of Research Group, Institute of Applied Materials – Energy Storage Systems"
+  * "Professor and Group Leader"
+  * "Scientific Officer, KIT Energy Center"
+  * "Researcher, Smart Grids & Energy Markets group"
+- If no role is found in text, leave as empty string
 
 IMPORTANT SCORING GUIDELINES:
 - Use the FULL 0.0-1.0 scale. Don't be overly conservative.
@@ -293,6 +310,14 @@ Contacts to evaluate:
                 cleaned_name = ai_data.get("cleaned_name")
                 if cleaned_name and cleaned_name.strip():
                     contact["Full_name"] = cleaned_name.strip()
+                
+                # Use AI-extracted role if provided and better than existing
+                ai_role = ai_data.get("role")
+                if ai_role and ai_role.strip() and len(ai_role.strip()) > 10:
+                    # Only replace if current role is empty or very short
+                    current_role = contact.get("Role", "")
+                    if not current_role or len(current_role) < 10:
+                        contact["Role"] = ai_role.strip()
                 
                 evaluated.append(contact)
                 

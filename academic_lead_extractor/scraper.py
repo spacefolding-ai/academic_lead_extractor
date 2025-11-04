@@ -797,6 +797,7 @@ def _guess_name_from_node(n: HTMLParser) -> str:
 
 
 def _guess_title_from_node(n: HTMLParser) -> str:
+    """Extract title/role from node - looks for position, department, function."""
     # Look for labels like title/position/role
     for sel in TITLE_HINT_CLASSES:
         node = n.css_first(sel)
@@ -804,14 +805,94 @@ def _guess_title_from_node(n: HTMLParser) -> str:
             t = _text(node)
             if t and len(t) >= 3:
                 return t
+    
+    # Check table cells - often contain position/function
+    for td in n.css("td"):
+        td_text = _text(td)
+        # Look for role indicators
+        role_indicators = ['professor', 'prof.', 'lecturer', 'researcher', 'head', 'director', 
+                          'group lead', 'spokesperson', 'officer', 'contact person', 'leader',
+                          'wissenschaftler', 'leiter', 'gruppenleiter', 'abteilungsleiter']
+        if any(indicator in td_text.lower() for indicator in role_indicators):
+            # Extract meaningful title (not just "Tel." or phone numbers)
+            if not any(skip in td_text.lower() for skip in ['tel.', 'telefon', 'phone', 'fax', 'email']):
+                if 10 < len(td_text) < 300 and not td_text.startswith('+'):
+                    return td_text
+    
     # Common small tags under name
-    for sel in ["small", ".role", ".position", ".title", "em", "i", "p"]:
+    for sel in ["small", ".role", ".position", ".title", ".function", "em", "i", "p"]:
         node = n.css_first(sel)
         if node:
             t = _text(node)
             if t and len(t) >= 3 and len(t) < 200:
                 return t
+    
+    # Check for text following the name in the same row/container
+    node_text = _text(n)
+    # Look for patterns like "Name, Title at Department"
+    if ',' in node_text:
+        parts = node_text.split(',', 1)
+        if len(parts) > 1:
+            potential_title = parts[1].strip()
+            if 10 < len(potential_title) < 200:
+                # Check if it looks like a title/role
+                if any(indicator in potential_title.lower() for indicator in 
+                      ['professor', 'prof', 'researcher', 'head', 'director', 'group', 'institute']):
+                    return potential_title
+    
     return ""
+
+
+def _extract_academic_title(name: str) -> tuple:
+    """
+    Extract academic title from name and return (title, clean_name).
+    Example: "Prof. Dr. John Smith" → ("Prof. Dr.", "John Smith")
+    """
+    if not name:
+        return ("", name)
+    
+    # Academic title patterns (order matters - check longer patterns first)
+    title_patterns = [
+        r'^(Prof\.\s*Dr\.-Ing\.|Professor\s*Dr\.-Ing\.)\s+',
+        r'^(Prof\.\s*Dr\.|Professor\s*Dr\.)\s+',
+        r'^(Dr\.-Ing\.|Dr\.\s*Ing\.)\s+',
+        r'^(Dr\.\s*rer\.\s*nat\.|Dr\.\s*rer\.nat\.)\s+',
+        r'^(Dr\.\s*phil\.)\s+',
+        r'^(Prof\.)\s+',
+        r'^(Dr\.)\s+',
+        r'^(Professor)\s+',
+        r'^(PhD)\s+',
+    ]
+    
+    for pattern in title_patterns:
+        match = re.search(pattern, name, re.IGNORECASE)
+        if match:
+            title = match.group(1).strip()
+            clean_name = re.sub(pattern, '', name, flags=re.IGNORECASE).strip()
+            return (title, clean_name)
+    
+    return ("", name)
+
+
+def _split_title_and_role(title_role_str: str) -> tuple:
+    """
+    Split a title/role string into academic title and role/position.
+    Example: "Prof. Dr., Head of Research Group" → ("Prof. Dr.", "Head of Research Group")
+    """
+    if not title_role_str:
+        return ("", "")
+    
+    # Check if string starts with academic title
+    title, remaining = _extract_academic_title(title_role_str)
+    
+    # Clean up remaining text (role)
+    role = remaining.strip()
+    if role.startswith(','):
+        role = role[1:].strip()
+    if role.startswith('-'):
+        role = role[1:].strip()
+    
+    return (title, role)
 
 
 def _guess_field_from_text(txt: str) -> str:
@@ -929,10 +1010,20 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
 
         # If no emails on card, we might still create a record and fill email later from page-level scan
         if not emails_with_context and (name or title):
+            # Split title_role into academic title and role/position
+            academic_title, role = _split_title_and_role(title) if title else ("", "")
+            # Also extract academic title from name if present
+            name_title, clean_name = _extract_academic_title(name) if name else ("", name)
+            # Use academic title from name if title_role didn't have one
+            if name_title and not academic_title:
+                academic_title = name_title
+                name = clean_name
+            
             contacts.append({
                 "Full_name": name or "",
                 "Email": "",
-                "Title_role": title or "",
+                "Title": academic_title,
+                "Role": role,
                 "Field_of_study": _guess_field_from_text(node_text) or "",
                 "page_text": node_text[:6000] if node_text else page_text[:6000],
                 "source_url": page_url,
@@ -957,11 +1048,21 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
                 # Only use node-level name if we still don't have anything
                 if not final_name:
                     final_name = name
+                
+                # Split title_role into academic title and role/position
+                academic_title, role = _split_title_and_role(title) if title else ("", "")
+                # Also extract academic title from name if present
+                name_title, clean_name = _extract_academic_title(final_name) if final_name else ("", final_name)
+                # Use academic title from name if title_role didn't have one
+                if name_title and not academic_title:
+                    academic_title = name_title
+                    final_name = clean_name
 
-        contacts.append({
+                contacts.append({
                     "Full_name": final_name or "",
                     "Email": em,
-                    "Title_role": title or "",
+                    "Title": academic_title,
+                    "Role": role,
                     "Field_of_study": _guess_field_from_text(node_text) or "",
                     "page_text": node_text[:6000] if node_text else page_text[:6000],
                     "source_url": page_url,
@@ -998,11 +1099,21 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
                     name = name_m.group(1) if name_m else ""
                     # crude title extraction
                     title_m = re.search(r"(Professor|Prof\.|Dr\.|Lecturer|Research(?:er| Associate| Fellow)|Wissenschaft(?:ler|liche)|Ingenieur|Engineer|Head|Leader)[^.,\n]{0,120}", t, re.I)
-                    title = title_m.group(0) if title_m else ""
+                    title_str = title_m.group(0) if title_m else ""
+                    
+                    # Split title and role
+                    academic_title, role = _split_title_and_role(title_str) if title_str else ("", "")
+                    # Extract academic title from name if present
+                    name_title, clean_name = _extract_academic_title(name) if name else ("", name)
+                    if name_title and not academic_title:
+                        academic_title = name_title
+                        name = clean_name
+                    
                     contacts.append({
                         "Full_name": name,
                         "Email": em,
-                        "Title_role": title,
+                        "Title": academic_title,
+                        "Role": role,
                         "Field_of_study": _guess_field_from_text(t),
                         "page_text": t[:6000] if t else page_text[:6000],
                         "source_url": page_url,

@@ -124,9 +124,14 @@ async def main(university_urls=None, use_ai=True, client=None, ai_model="gpt-4o-
             df["Publications"] = df["Publications"].apply(lambda x: ", ".join(x) if isinstance(x, list) and x else "")
         
         columns = [
-            "Full_name", "Email", "Title_role", "AI_Field", "AI_Score", "AI_Reason",
+            "Full_name", "Email", "Title", "Role", "AI_Field", "AI_Score", "AI_Reason",
             "University", "Country", "University_Website_URL", "Source_URL", "Publications"
         ]
+        
+        # Ensure all expected columns exist (add empty columns if missing)
+        for col in columns:
+            if col not in df.columns:
+                df[col] = ""
         
         filename = os.path.join(output_dir, f"{country}.csv")
         df.to_csv(filename, sep=";", index=False, columns=columns)
