@@ -1,0 +1,22 @@
+# Academic Lead Extractor Dependencies
+
+# HTTP and async
+aiohttp>=3.9.0
+requests>=2.31.0
+
+# HTML parsing
+selectolax>=0.3.17
+beautifulsoup4>=4.12.0
+
+# Data processing
+pandas>=2.0.0
+
+# Progress bars
+tqdm>=4.66.0
+
+# AI/OpenAI
+openai>=1.3.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
