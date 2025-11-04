@@ -37,7 +37,7 @@ from config import (
 # ----------------------------------------
 # GLOBAL SESSION LIMITS
 # ----------------------------------------
-CONNECTIONS = 20  # max concurrent HTTP requests
+CONNECTIONS = 5  # max concurrent HTTP requests (reduced to avoid server rejections)
 TIMEOUT = aiohttp.ClientTimeout(total=15)
 
 # ----------------------------------------
@@ -111,7 +111,8 @@ Content preview: {html_snippet[:2000]}
 **Task:**
 Determine if this page is:
 1. A department/faculty/institute homepage for one of the target domains
-2. A staff/team directory for researchers in these fields
+2. A staff/team directory or search page listing researchers in these fields
+3. A team/people page with contact information for relevant researchers
 
 Return JSON with:
 - relevant (boolean): true if this page is ICP-relevant
@@ -122,16 +123,21 @@ EXCLUDE:
 - Law, medicine, architecture, business, humanities departments
 - Chemistry, biology, pure mathematics (unless combined with engineering)
 - Job postings, career pages, alumni pages
-- Navigation/overview pages with just links (no actual staff info)
 - Student organizations
+- General university overview pages with NO staff listings
 
-INCLUDE:
+INCLUDE (be generous!):
 - Faculty of Electrical Engineering (YES!)
 - Institute for Power Electronics (YES!)
 - Energy Systems Research Group (YES!)
 - Mechatronics Department (YES! - includes control systems, sensors, automation)
 - Robotics & Automation Institute (YES! - related to embedded systems)
-- Team pages listing researchers with contact info
+- Team pages listing researchers with contact info (YES!)
+- Staff directories and search pages (YES! - these are exactly what we need)
+- People/personnel pages for relevant departments (YES!)
+
+**IMPORTANT:** Staff directories, people search pages, and team listing pages are EXACTLY what we need!
+If the page appears to list or search for staff/researchers, mark it as relevant (YES!).
 
 **Note:** Mechatronics, robotics, and automation are HIGHLY relevant because they involve:
 - Embedded systems & real-time control
@@ -186,6 +192,112 @@ Return ONLY valid JSON."""
         if DEBUG:
             print(f"   ⚠️  AI filter exception: {e}")
         return True  # Fallback: allow if error
+
+
+async def ai_detect_profile_page(url: str, title: str, html_snippet: str, client, ai_model: str) -> bool:
+    """
+    Use AI to determine if a page is an individual person's profile/bio page.
+    
+    Args:
+        url: The page URL
+        title: Page title
+        html_snippet: First ~1500 chars of page text for context
+        client: OpenAI client
+        ai_model: Model name (gpt-4o-mini or gpt-4o)
+    
+    Returns:
+        True if page is an individual profile, False otherwise
+    """
+    if not client:
+        return False  # Fallback: don't assume it's a profile
+    
+    import json
+    import time
+    
+    # Build a compact prompt
+    prompt = f"""You are an expert at identifying individual academic profile pages.
+
+**Page Information:**
+URL: {url}
+Title: {title}
+Content preview: {html_snippet[:1500]}
+
+**Task:**
+Determine if this page is an INDIVIDUAL PERSON'S profile/bio page (not a department or list page).
+
+An individual profile page typically contains:
+- One person's name prominently displayed
+- Personal contact information (email, phone, office)
+- Biography or research interests for ONE person
+- Publications or projects by ONE person
+- Single person's photo
+- Academic title/position for ONE person
+
+NOT individual profiles:
+- Staff directories listing multiple people
+- Department/institute homepages
+- Research group pages with multiple members
+- Search pages or navigation pages
+- Course pages or project pages
+
+Return JSON with:
+- is_profile (boolean): true if this is an INDIVIDUAL person's profile page
+- confidence (number 0.0-1.0): how confident you are
+- person_name (string): the person's name if detected, empty string otherwise
+- reason (string): brief explanation
+
+Be strict: only return true if it's clearly ONE person's profile page.
+
+Return ONLY valid JSON."""
+
+    try:
+        # Retry logic with exponential backoff
+        max_retries = 2  # Fewer retries for profile detection
+        retry_delay = 30
+        
+        for attempt in range(max_retries):
+            try:
+                response = client.chat.completions.create(
+                    model=ai_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1,  # Lower temperature for more consistent detection
+                    response_format={"type": "json_object"}
+                )
+                break
+            except Exception as api_error:
+                error_msg = str(api_error)
+                is_retryable = any(x in error_msg.lower() for x in ["rate", "limit", "500", "502", "503", "timeout"])
+                
+                if attempt < max_retries - 1 and is_retryable:
+                    wait_time = retry_delay * (attempt + 1)
+                    if DEBUG:
+                        print(f"   ⚠️  AI profile detection error (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    if DEBUG:
+                        print(f"   ⚠️  AI profile detection failed: {error_msg}")
+                    return False  # Fallback: don't assume it's a profile
+        
+        # Parse response
+        result = json.loads(response.choices[0].message.content)
+        is_profile = result.get("is_profile", False)
+        confidence = result.get("confidence", 0.0)
+        person_name = result.get("person_name", "")
+        reason = result.get("reason", "")
+        
+        if DEBUG:
+            status = "👤" if is_profile else "📋"
+            print(f"      {status} AI Profile Detection: {title[:40]}... → {is_profile} (conf: {confidence:.2f})")
+            if person_name:
+                print(f"         Person: {person_name}")
+            print(f"         Reason: {reason[:80]}")
+        
+        return is_profile and confidence >= 0.6  # Require 60% confidence for profile detection
+        
+    except Exception as e:
+        if DEBUG:
+            print(f"   ⚠️  AI profile detection exception: {e}")
+        return False  # Fallback: don't assume it's a profile
 
 
 async def ai_find_staff_page_links(html: str, base_url: str, client, ai_model: str) -> list:
@@ -363,7 +475,7 @@ def allowed_url(url: str) -> bool:
 
 
 def looks_like_staff_page(text: str, url: str) -> bool:
-    """Heuristic: detect staff/team/people directories before parsing full HTML."""
+    """Heuristic: detect staff/team/people directories AND individual profile pages."""
     text_l = text.lower()
     url_l = url.lower()
 
@@ -377,6 +489,56 @@ def looks_like_staff_page(text: str, url: str) -> bool:
             if DEBUG:
                 print(f"   ✅ STAFF KEYWORD MATCH in TITLE: '{k}' in '{text[:80]}'")
             return True
+    
+    # Generic detection of individual profile pages
+    # These patterns work across different languages and university systems
+    import re
+    
+    # Pattern 1: URL with ID/number + name
+    # Examples: /421/john-smith, /staff/123/maria-garcia, /profile/456/mueller
+    # Works for: English, German, Spanish, Serbian, etc.
+    if re.search(r'/\d+/[\w-]+(?:-[\w-]+)*/?$', url_l, re.IGNORECASE):
+        if DEBUG:
+            print(f"   ✅ INDIVIDUAL PROFILE PAGE detected (number + name pattern): {url}")
+        return True
+    
+    # Pattern 2: Profile/staff/people with single name
+    # Examples: /profile/john-smith, /staff/maria-garcia, /people/hans-mueller, ~/username
+    profile_url_keywords = [
+        r'/profile/[\w-]+/?$', r'/staff/[\w-]+/?$', r'/people/[\w-]+/?$',
+        r'/faculty/[\w-]+/?$', r'/researcher/[\w-]+/?$', r'/professor/[\w-]+/?$',
+        r'/~[\w-]+/?$',  # Unix-style home directories
+        r'/mitarbeiter/[\w-]+/?$', r'/personen/[\w-]+/?$',  # German
+        r'/personnel/[\w-]+/?$', r'/chercheur/[\w-]+/?$',  # French
+        r'/personale/[\w-]+/?$', r'/ricercatore/[\w-]+/?$',  # Italian
+        r'/investigador/[\w-]+/?$', r'/profesor/[\w-]+/?$',  # Spanish
+    ]
+    for pattern in profile_url_keywords:
+        if re.search(pattern, url_l, re.IGNORECASE):
+            if DEBUG:
+                print(f"   ✅ INDIVIDUAL PROFILE PAGE detected (profile URL pattern): {url}")
+            return True
+    
+    # Pattern 3: Title starting with capitalized name followed by separator
+    # Examples: "John Smith | MIT", "Dr. Maria Garcia - UNAM", "Prof. Hans Mueller, TUM"
+    # Character ranges cover: Latin (English, German, French, Spanish, Italian), 
+    # Cyrillic (Russian, Serbian, Bulgarian), Greek, and accented characters
+    # Uppercase: A-Z, À-Ž, А-Я, Α-Ω (Latin, Latin Extended, Cyrillic, Greek)
+    # Lowercase: a-z, à-ž, а-я, α-ω (Latin, Latin Extended, Cyrillic, Greek)
+    title_name_patterns = [
+        # With academic title prefix
+        r'^(?:Prof\.?|Dr\.?|Professor|Doctor|Assoc\.?|Assistant)?\s*[A-ZÀ-ŽА-ЯΑ-Ω][a-zà-žа-яα-ω]+(?:\s+[A-ZÀ-ŽА-ЯΑ-Ω][a-zà-žа-яα-ω]+){1,3}\s*[|\-–—,]',
+        # Without academic title
+        r'^[A-ZÀ-ŽА-ЯΑ-Ω][a-zà-žа-яα-ω]+(?:\s+[A-ZÀ-ŽА-ЯΑ-Ω][a-zà-žа-яα-ω]+){1,3}\s*[|\-–—]',
+    ]
+    for pattern in title_name_patterns:
+        if re.search(pattern, text, re.UNICODE):
+            # Additional validation: title shouldn't be too long (profiles are usually short)
+            if len(text) < 200:  # Profile titles are typically under 200 chars
+                if DEBUG:
+                    print(f"   ✅ INDIVIDUAL PROFILE PAGE detected (name in title): '{text[:80]}'")
+                return True
+    
     return False
 
 
@@ -392,7 +554,10 @@ async def fetch(session: aiohttp.ClientSession, url: str) -> str:
         try:
             async with session.get(url, headers=headers, timeout=TIMEOUT, allow_redirects=True) as resp:
                 if resp.status == 200 and resp.headers.get("content-type", "").startswith("text/html"):
-                    return await resp.text()
+                    html = await resp.text()
+                    # Small delay after successful fetch to be polite to the server
+                    await asyncio.sleep(0.3)
+                    return html
         except Exception as e:
             if DEBUG:
                 print(f"   ⚠️ fetch failed ({attempt+1}/3) for {url}: {e}")
@@ -545,6 +710,14 @@ class StaffCrawler:
         # Detect potential staff pages OR subdomain homepages
         is_staff_page = looks_like_staff_page(title, url)
         
+        # If not detected by regex but AI is enabled, check with AI
+        # This is slower but more accurate for edge cases
+        if not is_staff_page and self.use_ai and self.client:
+            page_text_preview = _collect_page_text(tree)[:1500]
+            is_staff_page = await ai_detect_profile_page(url, title, page_text_preview, self.client, self.ai_model)
+            if is_staff_page and DEBUG:
+                print(f"   🤖 AI detected individual profile page (regex missed it)")
+        
         # Check if this is a subdomain homepage (e.g., iam.kit.edu, itep.kit.edu)
         # Only consider it a subdomain homepage if:
         # 1. It's at a shallow depth (0-2)
@@ -573,8 +746,18 @@ class StaffCrawler:
         
         # Process if it's a staff page
         if is_staff_page:
-            # Apply AI filter if enabled
-            if self.use_ai and self.client:
+            # Apply AI filter if enabled (BUT bypass for strong staff directory keywords)
+            url_lower = url.lower()
+            
+            # Strong staff directory keywords that should NEVER be filtered out
+            strong_staff_keywords = [
+                'personensuche', 'people', 'staff', 'mitarbeiter', 'team',
+                'faculty', 'researcher', 'professor', 'wissenschaftler',
+                'employees', 'contacts', 'directory'
+            ]
+            is_strong_staff_page = any(kw in url_lower for kw in strong_staff_keywords)
+            
+            if self.use_ai and self.client and not is_strong_staff_page:
                 # Get page text preview for AI
                 page_text_preview = _collect_page_text(tree)[:2000]
                 is_icp_relevant = await ai_filter_staff_page(url, title, page_text_preview, self.client, self.ai_model)
@@ -584,6 +767,8 @@ class StaffCrawler:
                         print(f"   ❌ AI filtered out: {url} (not ICP-relevant)")
                     self.ai_filtered_count += 1
                     return  # Skip this page - not ICP-relevant
+            elif is_strong_staff_page and DEBUG:
+                print(f"   🎯 Strong staff keyword detected - bypassing AI filter")
             
             if DEBUG:
                 print(f"   ✅ STAFF PAGE FOUND: {url}")
@@ -637,9 +822,18 @@ class StaffCrawler:
             else:
                 print(f"   📋 Found {len(tasks)} child URLs to crawl from homepage")
         
-        # Wait for all child crawls to complete
+        # Execute tasks in batches to avoid overwhelming the server
+        # Even though CONNECTIONS limits concurrent HTTP requests, having too many
+        # queued tasks can cause timeouts and memory issues
         if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            BATCH_SIZE = 5  # Reduced from 10 to 5 - smaller batches are gentler on servers
+            for i in range(0, len(tasks), BATCH_SIZE):
+                batch = tasks[i:i + BATCH_SIZE]
+                await asyncio.gather(*batch, return_exceptions=True)
+                # Longer delay between batches to be polite to the server
+                # This gives the server time to recover between bursts
+                if i + BATCH_SIZE < len(tasks):
+                    await asyncio.sleep(2.0)  # Increased from 0.5s to 2s
 
             # ----------------------------------------
 # CONTACT EXTRACTION (HTML → structured contacts)
@@ -657,20 +851,64 @@ def _join_clean(parts):
 
 
 def _collect_page_text(tree: HTMLParser) -> str:
-    # Collect a reasonable amount of page text for AI scoring/enrichment.
-    # Skip nav/footer common sections if IDs/classes suggest so.
+    """
+    Collect page text for AI evaluation, including hidden content (tabs, accordions, etc.).
+    The selectolax .text() method extracts ALL text from HTML regardless of CSS visibility,
+    so this captures content even if it's hidden via display:none, visibility:hidden, etc.
+    """
     big_chunks = []
-    for sel in ["main", "article", ".content", "#content", ".container", "body"]:
+    
+    # Priority 1: Main content areas
+    for sel in ["main", "article", ".content", "#content", ".main-content"]:
         n = tree.css_first(sel)
         if n:
             t = _text(n)
-            if t and len(t) > 600:
+            if t and len(t) > 300:
                 big_chunks.append(t)
+    
+    # Priority 2: Tab content (often hidden initially but contains important info)
+    # Common tab/accordion selectors across different frameworks
+    tab_selectors = [
+        ".tab-content", ".tabs", "[role='tabpanel']", ".tab-pane",  # Bootstrap, generic tabs
+        ".accordion", ".collapse", "[data-toggle='collapse']",  # Accordions
+        ".panel-body", ".panel-content",  # Panel layouts
+        "[hidden]", ".hidden-content", ".toggle-content",  # Hidden sections
+    ]
+    for sel in tab_selectors:
+        for node in tree.css(sel):
+            t = _text(node)
+            if t and len(t) > 200:  # Lower threshold for hidden content
+                big_chunks.append(t)
+    
+    # Priority 3: Container and body (if we didn't get enough content)
+    if len(" ".join(big_chunks)) < 1000:
+        for sel in [".container", "body"]:
+            n = tree.css_first(sel)
+            if n:
+                t = _text(n)
+                if t and len(t) > 500:
+                    big_chunks.append(t)
+    
+    # Fallback: Get everything from root
     if not big_chunks:
-        big_chunks.append(_text(tree.root)[:8000])
-    txt = " ".join(big_chunks)
-    # Normalize whitespace
-    return re.sub(r"\s+", " ", txt).strip()[:12000]
+        big_chunks.append(_text(tree.root)[:10000])
+    
+    # Remove navigation and footer noise
+    full_text = " ".join(big_chunks)
+    
+    # Filter out common navigation/footer patterns
+    noise_patterns = [
+        r'Cookie\s+(?:Policy|Notice|Settings)',
+        r'Privacy\s+Policy',
+        r'Terms\s+(?:of\s+)?(?:Service|Use)',
+        r'Copyright\s+©',
+        r'All\s+rights\s+reserved',
+    ]
+    for pattern in noise_patterns:
+        full_text = re.sub(pattern, '', full_text, flags=re.IGNORECASE)
+    
+    # Normalize whitespace and limit length
+    return re.sub(r"\s+", " ", full_text).strip()[:15000]  # Increased from 12000 to 15000
 
 
 def _extract_emails_from_tree(tree: HTMLParser) -> List[str]:
@@ -1025,7 +1263,7 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
                 "Title": academic_title,
                 "Role": role,
                 "Field_of_study": _guess_field_from_text(node_text) or "",
-                "page_text": node_text[:6000] if node_text else page_text[:6000],
+                "page_text": page_text[:10000],  # Always use full page context for AI
                 "source_url": page_url,
             })
         else:
@@ -1064,7 +1302,7 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
                     "Title": academic_title,
                     "Role": role,
                     "Field_of_study": _guess_field_from_text(node_text) or "",
-                    "page_text": node_text[:6000] if node_text else page_text[:6000],
+                    "page_text": page_text[:10000],  # Always use full page context for AI
                     "source_url": page_url,
                 })
 
@@ -1115,7 +1353,7 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
                         "Title": academic_title,
                         "Role": role,
                         "Field_of_study": _guess_field_from_text(t),
-                        "page_text": t[:6000] if t else page_text[:6000],
+                        "page_text": page_text[:10000],  # Always use full page context for AI
                         "source_url": page_url,
                     })
 
