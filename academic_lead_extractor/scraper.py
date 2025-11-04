@@ -433,8 +433,22 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
                 if em in per_node_emails:
                     continue
                 per_node_emails.add(em)
-                # Prefer local name (found near the email) over node-level name
-                final_name = local_name if local_name else name
+                # Priority: 1) Local name from HTML, 2) Extract from email, 3) Node-level name as last resort
+                final_name = local_name
+                if not final_name:
+                    # Try to extract from email (firstname.lastname@ format)
+                    if "@" in em:
+                        local_part = em.split("@")[0]
+                        if "." in local_part and not local_part.startswith("."):
+                            parts = local_part.split(".")
+                            if len(parts) == 2 and len(parts[0]) > 1:
+                                final_name = f"{parts[0].capitalize()} {parts[1].capitalize()}"
+                            elif len(parts) == 2 and len(parts[0]) == 1:
+                                final_name = f"{parts[0].upper()}. {parts[1].capitalize()}"
+                # Only use node-level name if we still don't have anything
+                if not final_name:
+                    final_name = name
+                
                 contacts.append({
                     "Full_name": final_name or "",
                     "Email": em,
