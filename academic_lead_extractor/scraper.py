@@ -45,11 +45,312 @@ TIMEOUT = aiohttp.ClientTimeout(total=15)
 # ----------------------------------------
 
 def is_same_domain(base: str, link: str) -> bool:
-    """Keep only links on same domain as start URL."""
+    """Keep only links on same domain or subdomain as start URL."""
     try:
-        return urlparse(base).netloc == urlparse(link).netloc
+        base_domain = urlparse(base).netloc
+        link_domain = urlparse(link).netloc
+        
+        # Extract root domain (e.g., kit.edu from www.kit.edu or iam.kit.edu)
+        base_parts = base_domain.split('.')
+        link_parts = link_domain.split('.')
+        
+        # Get root domain (last 2 parts: domain.tld)
+        if len(base_parts) >= 2:
+            base_root = '.'.join(base_parts[-2:])
+        else:
+            base_root = base_domain
+            
+        if len(link_parts) >= 2:
+            link_root = '.'.join(link_parts[-2:])
+        else:
+            link_root = link_domain
+        
+        # Allow if same root domain (e.g., both end in kit.edu)
+        return base_root == link_root
     except:
         return False
+
+
+async def ai_filter_staff_page(url: str, title: str, html_snippet: str, client, ai_model: str) -> bool:
+    """
+    Use AI to determine if a page is a relevant staff/team directory for ICP (power electronics, energy systems).
+    
+    Args:
+        url: The page URL
+        title: Page title
+        html_snippet: First ~2000 chars of page text for context
+        client: OpenAI client
+        ai_model: Model name (gpt-4o-mini or gpt-4o)
+    
+    Returns:
+        True if page is ICP-relevant, False otherwise
+    """
+    if not client:
+        return True  # Fallback: allow if AI unavailable
+    
+    import json
+    import time
+    
+    # Build a compact prompt
+    prompt = f"""You are an expert at identifying relevant academic departments and staff directories.
+
+I need to determine if this webpage is relevant to our target domains:
+- Power electronics & power systems
+- Energy systems, storage & renewable energy
+- Smart grids & grid integration
+- Electrical engineering & electrical machines
+- Mechatronics, robotics & embedded systems (control systems, automation, sensors)
+- Battery systems, EVs & e-mobility
+- Real-time simulation & hardware-in-the-loop
+
+**Page Information:**
+URL: {url}
+Title: {title}
+Content preview: {html_snippet[:2000]}
+
+**Task:**
+Determine if this page is:
+1. A department/faculty/institute homepage for one of the target domains
+2. A staff/team directory for researchers in these fields
+
+Return JSON with:
+- relevant (boolean): true if this page is ICP-relevant
+- confidence (number 0.0-1.0): how confident you are
+- reason (string): brief explanation
+
+EXCLUDE:
+- Law, medicine, architecture, business, humanities departments
+- Chemistry, biology, pure mathematics (unless combined with engineering)
+- Job postings, career pages, alumni pages
+- Navigation/overview pages with just links (no actual staff info)
+- Student organizations
+
+INCLUDE:
+- Faculty of Electrical Engineering (YES!)
+- Institute for Power Electronics (YES!)
+- Energy Systems Research Group (YES!)
+- Mechatronics Department (YES! - includes control systems, sensors, automation)
+- Robotics & Automation Institute (YES! - related to embedded systems)
+- Team pages listing researchers with contact info
+
+**Note:** Mechatronics, robotics, and automation are HIGHLY relevant because they involve:
+- Embedded systems & real-time control
+- Power electronics for motor drives
+- Sensor technology & signal processing
+- Industrial automation systems
+
+Return ONLY valid JSON."""
+
+    try:
+        # Retry logic with exponential backoff
+        max_retries = 3
+        retry_delay = 30
+        
+        for attempt in range(max_retries):
+            try:
+                response = client.chat.completions.create(
+                    model=ai_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.2,
+                    response_format={"type": "json_object"}
+                )
+                break
+            except Exception as api_error:
+                error_msg = str(api_error)
+                is_retryable = any(x in error_msg.lower() for x in ["rate", "limit", "500", "502", "503", "timeout"])
+                
+                if attempt < max_retries - 1 and is_retryable:
+                    wait_time = retry_delay * (attempt + 1)
+                    if DEBUG:
+                        print(f"   ⚠️  AI filter error (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    if DEBUG:
+                        print(f"   ⚠️  AI filter failed: {error_msg}")
+                    return True  # Fallback: allow if AI fails
+        
+        # Parse response
+        result = json.loads(response.choices[0].message.content)
+        is_relevant = result.get("relevant", False)
+        confidence = result.get("confidence", 0.0)
+        reason = result.get("reason", "")
+        
+        if DEBUG:
+            status = "✅" if is_relevant else "❌"
+            print(f"      {status} AI Filter: {title[:40]}... → {is_relevant} (conf: {confidence:.2f})")
+            print(f"         Reason: {reason[:80]}")
+        
+        return is_relevant and confidence >= 0.5
+        
+    except Exception as e:
+        if DEBUG:
+            print(f"   ⚠️  AI filter exception: {e}")
+        return True  # Fallback: allow if error
+
+
+async def ai_find_staff_page_links(html: str, base_url: str, client, ai_model: str) -> list:
+    """
+    Use AI to discover staff/team page URLs from homepage HTML.
+    
+    Args:
+        html: Homepage HTML content
+        base_url: University homepage URL
+        client: OpenAI client
+        ai_model: Model name (gpt-4o-mini or gpt-4o)
+    
+    Returns:
+        List of staff page URLs
+    """
+    if not client or not html:
+        return []
+
+    import json
+    import time
+    from selectolax.parser import HTMLParser
+    from urllib.parse import urljoin
+    
+    tree = HTMLParser(html)
+    
+    # Extract all links from homepage
+    links = []
+    for a in tree.css("a"):
+        href = a.attrs.get("href", "")
+        if not href:
+            continue
+        
+        full_url = urljoin(base_url, href)
+        link_text = a.text(strip=True)
+        
+        # Skip obviously bad links
+        if not is_same_domain(base_url, full_url):
+            continue
+        if not allowed_url(full_url):
+            continue
+        
+        links.append({
+            "url": full_url,
+            "text": link_text,
+            "href": href
+        })
+    
+    # Prioritize subdomain links (department websites)
+    subdomain_links = [l for l in links if urlparse(l["url"]).netloc != urlparse(base_url).netloc]
+    main_domain_links = [l for l in links if urlparse(l["url"]).netloc == urlparse(base_url).netloc]
+    
+    # Show subdomain links first (more likely to be department pages)
+    prioritized_links = subdomain_links[:100] + main_domain_links[:100]
+    prioritized_links = prioritized_links[:150]  # Limit total to avoid token overflow
+    
+    if not prioritized_links:
+        return []
+    
+    # Build prompt for AI with emphasis on subdomains
+    prompt = f"""You are an expert at finding staff/team directory pages on university websites.
+
+I need to identify which links from this university homepage lead to staff/team/people directories for ICP-relevant departments:
+- Power electronics & power systems
+- Energy systems, storage & renewable energy
+- Electrical engineering & electrical machines
+- Mechatronics, robotics & embedded systems
+- Smart grids & battery systems
+
+**Homepage:** {base_url}
+
+**IMPORTANT:** Look especially for:
+1. **Subdomain links** (e.g., etit.kit.edu, ipe.kit.edu, energy.kit.edu) - these are often department websites
+2. Links containing: "institute", "faculty", "department", "center", "group"
+3. Links to pages with staff/team/people listings
+
+**Available Links (URL → Link Text):**
+{chr(10).join([f'{i+1}. {link["url"]} → "{link["text"]}"' for i, link in enumerate(prioritized_links[:80])])}
+
+**Task:**
+Return a JSON object with a "staff_pages" array containing the URLs that are most likely to lead to or contain:
+1. Staff/team directory pages (listing multiple people with contact info)
+2. ICP-relevant department homepages (that will have staff links)
+3. Research institute pages with team listings
+
+**PRIORITIZE:**
+- Subdomain URLs (iam.kit.edu, itep.kit.edu, energy.kit.edu, ipe.kit.edu, etc.)
+- Institute/faculty pages (electrical engineering, energy, mechatronics)
+- Direct staff directory links
+
+**INCLUDE:**
+- "Team", "Staff", "People", "Mitarbeiter", "Personnel", "Employees"
+- "Institute", "Faculty", "Department", "Research Group"
+- Energy-related institutes/centers
+- Electrical engineering departments
+
+**EXCLUDE:**
+- Generic navigation pages
+- Student pages, alumni directories
+- Job postings, career pages
+- Administrative support only
+- Non-ICP departments (law, medicine, business, architecture, etc.)
+
+Return ONLY valid JSON with format:
+{{
+  "staff_pages": [
+    {{"url": "https://etit.kit.edu/", "reason": "Electrical Engineering faculty subdomain"}},
+    {{"url": "https://energy.kit.edu/team", "reason": "Energy Center staff page"}},
+    {{"url": "https://ipe.kit.edu/", "reason": "Power Electronics Institute subdomain"}}
+  ]
+}}
+
+Return 5-20 most promising URLs (prioritize subdomains). If no good candidates found, return empty array."""
+
+    try:
+        # Retry logic
+        max_retries = 3
+        retry_delay = 30
+        
+        for attempt in range(max_retries):
+            try:
+                response = client.chat.completions.create(
+                    model=ai_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.2,
+                    response_format={"type": "json_object"}
+                )
+                break
+            except Exception as api_error:
+                error_msg = str(api_error)
+                is_retryable = any(x in error_msg.lower() for x in ["rate", "limit", "500", "502", "503", "timeout"])
+                
+                if attempt < max_retries - 1 and is_retryable:
+                    wait_time = retry_delay * (attempt + 1)
+                    if DEBUG:
+                        print(f"   ⚠️  AI link discovery error (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    if DEBUG:
+                        print(f"   ⚠️  AI link discovery failed: {error_msg}")
+                    return []  # Fallback to keyword-based
+        
+        # Parse response
+        result = json.loads(response.choices[0].message.content)
+        staff_pages = result.get("staff_pages", [])
+        
+        # Extract URLs
+        ai_urls = []
+        for page in staff_pages:
+            url = page.get("url", "")
+            reason = page.get("reason", "")
+            if url:
+                ai_urls.append(url)
+                if DEBUG:
+                    print(f"      🤖 AI found: {url}")
+                    print(f"         Reason: {reason}")
+        
+        if DEBUG and ai_urls:
+            print(f"   🤖 AI discovered {len(ai_urls)} staff page link(s)")
+        
+        return ai_urls
+        
+    except Exception as e:
+        if DEBUG:
+            print(f"   ⚠️  AI link discovery exception: {e}")
+        return []  # Fallback to keyword-based
 
 
 def allowed_url(url: str) -> bool:
@@ -107,13 +408,45 @@ async def fetch(session: aiohttp.ClientSession, url: str) -> str:
 def clean_email(raw: str) -> str:
     """Convert obfuscated emails to real email formats."""
     email = raw.strip()
+    
+    # Remove common spam-protection phrases
+    email = re.sub(r'does-not-exist\.?', '', email, flags=re.IGNORECASE)
+    email = re.sub(r'no-spam\.?', '', email, flags=re.IGNORECASE)
+    email = re.sub(r'remove-this\.?', '', email, flags=re.IGNORECASE)
 
+    # Apply standard obfuscation pattern replacements
     for pattern, repl in EMAIL_OBFUSCATION_PATTERNS.items():
         email = re.sub(pattern, repl, email, flags=re.IGNORECASE)
 
-    # Remove double spaces, trailing dots
-    email = email.replace(" ", "").replace("..", ".")
-    return email if "@" in email else ""
+    # Special handling for KIT format: "firstname lastname @ domain tld"
+    # Convert to "firstname.lastname@domain.tld"
+    if "@" in email and email.count(" ") >= 2:
+        parts = email.split("@")
+        if len(parts) == 2:
+            # Clean local part (before @): "firstname lastname" → "firstname.lastname"
+            local = parts[0].strip()
+            if " " in local and local.count(" ") == 1:
+                local = local.replace(" ", ".")
+            else:
+                local = local.replace(" ", "")
+            
+            # Clean domain part (after @): "domain tld" → "domain.tld"
+            domain = parts[1].strip()
+            if " " in domain and domain.count(" ") == 1:
+                domain = domain.replace(" ", ".")
+            else:
+                domain = domain.replace(" ", "")
+            
+            email = f"{local}@{domain}"
+    else:
+        # Standard case: just remove spaces
+        email = email.replace(" ", "")
+    
+    # Clean up any remaining issues
+    email = email.replace("..", ".")
+    email = re.sub(r'^\.+|\.+$', '', email)  # Remove leading/trailing dots
+    
+    return email if "@" in email and "." in email.split("@")[-1] else ""
 
 
 def is_academic_email(email: str) -> bool:
@@ -136,19 +469,35 @@ def is_academic_email(email: str) -> bool:
 # ----------------------------------------
 
 class StaffCrawler:
-    def __init__(self, start_url: str):
+    def __init__(self, start_url: str, use_ai: bool = False, client=None, ai_model: str = "gpt-4o-mini"):
         self.start_url = start_url
         self.domain = urlparse(start_url).netloc
         self.visited: Set[str] = set()
         self.queued: Set[str] = set()  # Track URLs queued for crawling
         self.found_pages: List[str] = []
         self.contacts: List[Dict] = []
+        self.use_ai = use_ai
+        self.client = client
+        self.ai_model = ai_model
+        self.ai_filtered_count = 0  # Track how many pages were filtered out by AI
+        self.ai_discovered_urls: Set[str] = set()  # Track AI-discovered URLs
 
     async def crawl(self):
         """Main entry: start async crawl with queue."""
         connector = aiohttp.TCPConnector(limit=CONNECTIONS, ssl=False)
         async with aiohttp.ClientSession(connector=connector) as session:
             await self._crawl_recursive(self.start_url, session, depth=0)
+        
+        # Print summary if AI was used
+        if DEBUG and self.use_ai:
+            ai_found_count = len(self.ai_discovered_urls)
+            keyword_found_count = len(self.found_pages) - ai_found_count
+            print(f"   📊 Discovery summary:")
+            print(f"      🤖 AI discovered: {ai_found_count} staff pages")
+            print(f"      📋 Keywords found: {keyword_found_count} additional pages")
+            print(f"      ❌ AI filtered: {self.ai_filtered_count} non-ICP pages")
+            print(f"      ✅ Total processed: {len(self.found_pages)} staff pages")
+        
         return self.contacts
 
     async def _crawl_recursive(self, url: str, session, depth: int):
@@ -173,14 +522,69 @@ class StaffCrawler:
         if DEBUG and depth == 0:
             print(f"   📄 [D{depth}] Checking: {url[:80]}... (title: {title[:40]}...)")
 
-        # Detect potential staff pages
+        # SPECIAL: At homepage level (depth=0), use AI to discover staff pages first
+        if depth == 0 and self.use_ai and self.client:
+            if DEBUG:
+                print(f"   🤖 Using AI to discover staff page links...")
+            
+            ai_discovered_urls = await ai_find_staff_page_links(html, url, self.client, self.ai_model)
+            
+            if ai_discovered_urls:
+                if DEBUG:
+                    print(f"   ✅ AI found {len(ai_discovered_urls)} staff page link(s)")
+                
+                # Queue AI-discovered pages for crawling and track them
+                for ai_url in ai_discovered_urls:
+                    if ai_url not in self.visited and ai_url not in self.queued:
+                        self.queued.add(ai_url)
+                        self.ai_discovered_urls.add(ai_url)
+            else:
+                if DEBUG:
+                    print(f"   ⚠️  AI found no staff pages, will use keyword discovery fallback")
+
+        # Detect potential staff pages OR subdomain homepages
         is_staff_page = looks_like_staff_page(title, url)
-        if DEBUG and "mitarbeitende" in url.lower():
-            print(f"   🔍 Checking 'mitarbeitende' URL: {url}")
-            print(f"      Title: {title}")
-            print(f"      is_staff_page: {is_staff_page}")
         
+        # Check if this is a subdomain homepage (e.g., iam.kit.edu, itep.kit.edu)
+        # Only consider it a subdomain homepage if:
+        # 1. It's at a shallow depth (0-2)
+        # 2. It's a different subdomain from the start URL
+        # 3. It's a shallow path (homepage-like)
+        # 4. It's still part of the same root domain (kit.edu)
+        url_domain = urlparse(url).netloc
+        start_domain = urlparse(self.start_url).netloc
+        
+        # Extract root domains
+        url_root = '.'.join(url_domain.split('.')[-2:]) if '.' in url_domain else url_domain
+        start_root = '.'.join(start_domain.split('.')[-2:]) if '.' in start_domain else start_domain
+        
+        is_subdomain_homepage = (
+            depth <= 2 and  # Only treat as homepage at shallow depths
+            url_domain != start_domain and  # Different subdomain
+            url_root == start_root and  # Same root domain (both kit.edu)
+            url.count('/') <= 4 and  # Shallow path
+            not any(x in url.lower() for x in ['karriere', 'job', 'student', 'alumni', 'news', 'press'])  # Exclude non-academic pages
+        )
+        
+        if DEBUG and (is_subdomain_homepage or "mitarbeitende" in url.lower()):
+            print(f"   🔍 Checking URL: {url}")
+            print(f"      Title: {title[:60]}")
+            print(f"      is_staff_page: {is_staff_page}, is_subdomain_homepage: {is_subdomain_homepage}")
+        
+        # Process if it's a staff page
         if is_staff_page:
+            # Apply AI filter if enabled
+            if self.use_ai and self.client:
+                # Get page text preview for AI
+                page_text_preview = _collect_page_text(tree)[:2000]
+                is_icp_relevant = await ai_filter_staff_page(url, title, page_text_preview, self.client, self.ai_model)
+                
+                if not is_icp_relevant:
+                    if DEBUG:
+                        print(f"   ❌ AI filtered out: {url} (not ICP-relevant)")
+                    self.ai_filtered_count += 1
+                    return  # Skip this page - not ICP-relevant
+            
             if DEBUG:
                 print(f"   ✅ STAFF PAGE FOUND: {url}")
             self.found_pages.append(url)
@@ -188,9 +592,25 @@ class StaffCrawler:
             self.contacts.extend(extracted)
             if DEBUG:
                 print(f"      → Extracted {len(extracted)} contacts")
+        elif is_subdomain_homepage and depth < MAX_CRAWL_DEPTH:
+            # Subdomain homepage - continue exploring but don't extract contacts yet
+            if DEBUG:
+                print(f"   🏠 Subdomain homepage - will explore for staff pages: {url}")
 
         # Find further links and crawl them
         tasks = []
+        
+        # At depth 0, first crawl AI-discovered URLs
+        if depth == 0 and self.use_ai:
+            ai_queued = [u for u in self.queued if u not in self.visited]
+            for ai_url in ai_queued:
+                if ai_url not in self.visited:
+                    tasks.append(self._crawl_recursive(ai_url, session, depth + 1))
+            
+            if DEBUG and ai_queued:
+                print(f"   🤖 Queuing {len(ai_queued)} AI-discovered URLs for crawling")
+        
+        # Also crawl keyword-discovered links (fallback/supplement)
         for link in tree.css("a"):
             href = link.attrs.get("href", "")
             if not href:
@@ -210,7 +630,12 @@ class StaffCrawler:
             tasks.append(self._crawl_recursive(full_url, session, depth + 1))
         
         if DEBUG and depth == 0:
-            print(f"   📋 Found {len(tasks)} child URLs to crawl from homepage")
+            ai_count = len(self.ai_discovered_urls) if self.use_ai else 0
+            keyword_count = len(tasks) - ai_count
+            if self.use_ai and ai_count > 0:
+                print(f"   📋 Total URLs to crawl: {len(tasks)} (AI: {ai_count}, Keywords: {keyword_count})")
+            else:
+                print(f"   📋 Found {len(tasks)} child URLs to crawl from homepage")
         
         # Wait for all child crawls to complete
         if tasks:
@@ -250,6 +675,7 @@ def _collect_page_text(tree: HTMLParser) -> str:
 
 def _extract_emails_from_tree(tree: HTMLParser) -> List[str]:
     found = set()
+    
     # 1) mailto links
     for a in tree.css("a[href]"):
         href = a.attrs.get("href", "")
@@ -258,15 +684,71 @@ def _extract_emails_from_tree(tree: HTMLParser) -> List[str]:
             cleaned = clean_email(raw)
             if cleaned:
                 found.add(cleaned)
+    
+    # 2) Check for obfuscated emails in link text (KIT format)
+    # Look for patterns like: "firstname lastname ∂ domain tld"
+    for a in tree.css("a"):
+        link_text = _text(a)
+        # Check if contains obfuscation symbols
+        if any(symbol in link_text for symbol in ['∂', '[at]', '(at)', ' at ']):
+            # Extract just the email portion using regex patterns
+            # Pattern: word(s) + obfuscation + word(s)
+            email_patterns = [
+                r'([a-zA-ZäöüÄÖÜß]+(?:\s+[a-zA-ZäöüÄÖÜß]+)?)\s*∂\s*([a-zA-ZäöüÄÖÜß]+(?:\s+[a-zA-ZäöüÄÖÜß]+)?)',
+                r'([a-zA-Z.]+)\s*\[at\]\s*([a-zA-Z.]+)',
+                r'([a-zA-Z.]+)\s*\(at\)\s*([a-zA-Z.]+)',
+            ]
+            for pattern in email_patterns:
+                matches = re.findall(pattern, link_text, flags=re.IGNORECASE)
+                for match in matches:
+                    obfuscated = f"{match[0]} @ {match[1]}"
+                    cleaned = clean_email(obfuscated)
+                    if cleaned and '@' in cleaned:
+                        found.add(cleaned)
+    
+    # 3) Check table cells for obfuscated emails (common in staff directories)
+    for td in tree.css("td"):
+        td_text = _text(td)
+        # Check if contains obfuscation symbols - extract just the email portion
+        if any(symbol in td_text for symbol in ['∂', '[at]', '(at)', ' at ']):
+            # Use regex to extract just the email portion
+            email_patterns = [
+                r'([a-zA-ZäöüÄÖÜß]+(?:\s+[a-zA-ZäöüÄÖÜß]+)?)\s*∂\s*(?:does-not-exist\.)?\s*([a-zA-ZäöüÄÖÜß]+(?:\s+[a-zA-ZäöüÄÖÜß]+)?)',
+                r'([a-zA-Z.]+)\s*\[at\]\s*([a-zA-Z.]+)',
+                r'([a-zA-Z.]+)\s*\(at\)\s*([a-zA-Z.]+)',
+            ]
+            for pattern in email_patterns:
+                matches = re.findall(pattern, td_text, flags=re.IGNORECASE)
+                for match in matches:
+                    obfuscated = f"{match[0]} @ {match[1]}"
+                    cleaned = clean_email(obfuscated)
+                    if cleaned and '@' in cleaned:
+                        found.add(cleaned)
 
-    # 2) inline text patterns (including obfuscations)
+    # 4) Standard email regex patterns
     body_text = _text(tree.root)
-    # Normalize common obfuscations first (the regex-based clean_email will also run later)
     candidates = re.findall(EMAIL_REGEX, body_text, flags=re.I)
     for cand in candidates:
         cleaned = clean_email(cand)
         if cleaned:
             found.add(cleaned)
+    
+    # 5) Look for obfuscated patterns in full page text
+    # Pattern: word(s) + obfuscation symbol + word(s)
+    obfuscated_patterns = [
+        r'([a-zA-Z]+(?:\s+[a-zA-Z]+)?)\s*∂\s*([a-zA-Z]+(?:\s+[a-zA-Z]+)?)',  # firstname lastname ∂ domain tld
+        r'([a-zA-Z.]+)\s*\[at\]\s*([a-zA-Z.]+)',  # name [at] domain
+        r'([a-zA-Z.]+)\s*\(at\)\s*([a-zA-Z.]+)',  # name (at) domain
+    ]
+    
+    for pattern in obfuscated_patterns:
+        matches = re.findall(pattern, body_text, flags=re.IGNORECASE)
+        for match in matches:
+            # Reconstruct email-like string and clean it
+            obfuscated = f"{match[0]} @ {match[1]}"
+            cleaned = clean_email(obfuscated)
+            if cleaned and '@' in cleaned:
+                found.add(cleaned)
 
     return list(found)
 
@@ -355,6 +837,15 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
     for div in tree.css("div"):
         if _looks_like_person_block(div):
             candidate_nodes.append(div)
+    
+    # Also check table rows (KIT and many German universities use tables)
+    for tr in tree.css("tr"):
+        tr_text = _text(tr)
+        # Check if row contains obfuscated email or looks like a person entry
+        has_email_indicator = any(symbol in tr_text for symbol in ['∂', '@', '[at]', '(at)'])
+        has_name_like = re.search(r'\b[A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ][a-zäöüß]+)+\b', tr_text)
+        if has_email_indicator and has_name_like:
+            candidate_nodes.append(tr)
 
     # Deduplicate nodes by id/ref
     seen_ids = set()
@@ -409,8 +900,26 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
                     
                     emails_with_context.append((cleaned, local_name))
         
-        # Also scan node text for obfuscated emails (harder to get context)
+        # Also scan node text for obfuscated emails
         node_text = _text(node)
+        
+        # Check for obfuscated email patterns first - extract just email portion
+        if any(symbol in node_text for symbol in ['∂', '[at]', '(at)', ' at ']):
+            email_patterns = [
+                r'([a-zA-ZäöüÄÖÜß]+(?:\s+[a-zA-ZäöüÄÖÜß]+)?)\s*∂\s*(?:does-not-exist\.)?\s*([a-zA-ZäöüÄÖÜß]+(?:\s+[a-zA-ZäöüÄÖÜß]+)?)',
+                r'([a-zA-Z.]+)\s*\[at\]\s*([a-zA-Z.]+)',
+                r'([a-zA-Z.]+)\s*\(at\)\s*([a-zA-Z.]+)',
+            ]
+            for pattern in email_patterns:
+                matches = re.findall(pattern, node_text, flags=re.IGNORECASE)
+                for match in matches:
+                    obfuscated = f"{match[0]} @ {match[1]}"
+                    cleaned = clean_email(obfuscated)
+                    if cleaned and is_academic_email(cleaned):
+                        if not any(e[0] == cleaned for e in emails_with_context):
+                            emails_with_context.append((cleaned, ""))
+        
+        # Also check for standard email patterns
         for m in re.findall(EMAIL_REGEX, node_text, flags=re.I):
             cleaned = clean_email(m)
             if cleaned and is_academic_email(cleaned):  # Filter admin emails
@@ -448,8 +957,8 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
                 # Only use node-level name if we still don't have anything
                 if not final_name:
                     final_name = name
-                
-                contacts.append({
+
+        contacts.append({
                     "Full_name": final_name or "",
                     "Email": em,
                     "Title_role": title or "",
@@ -578,8 +1087,8 @@ async def process_university(session, uni: dict, pbar=None, use_ai=False, client
         return []
     
     try:
-        # Create crawler and run
-        crawler = StaffCrawler(url)
+        # Create crawler with AI parameters and run
+        crawler = StaffCrawler(url, use_ai=use_ai, client=client, ai_model=ai_model)
         contacts = await crawler.crawl()
         
         # Add university metadata to each contact

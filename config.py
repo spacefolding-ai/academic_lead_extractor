@@ -376,7 +376,7 @@ COUNTRY_LANGUAGE = {
 # ---------------------------
 
 # Debug mode for verbose output
-DEBUG = False
+DEBUG = True
 
 # Staff page detection keywords (for URL and page title matching)
 STAFF_PAGE_KEYWORDS = [
@@ -394,9 +394,13 @@ STAFF_PAGE_KEYWORDS = [
     "/personale/", "/ricercatori/", "/professori/",
     # Spanish
     "/investigadores/", "/profesores/",
-    # Title keywords (more specific)
+    # Title keywords (English)
     "academic staff", "research staff", "faculty members", "our researchers",
-    "our professors", "team members", "group members"
+    "our professors", "team members", "group members",
+    "staff", "people", "team", "researchers", "faculty",
+    # Title keywords (German)
+    "mitarbeiter", "mitarbeitende", "personen", "wissenschaftler", 
+    "professoren", "forschende", "team"
 ]
 
 # URL patterns to exclude from crawling
