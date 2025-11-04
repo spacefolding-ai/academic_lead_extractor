@@ -11,13 +11,30 @@ from collections import defaultdict
 from config import (
     KEYWORDS_INCLUDE,
     KEYWORDS_BY_LANGUAGE,
-    COUNTRY_LANGUAGE
+    COUNTRY_LANGUAGE,
+    AI_PRICING
 )
 
 
 async def ai_evaluate_contacts(contacts: List[Dict], use_ai: bool, client, ai_model: str, 
-                               ai_batch_size: int, ai_min_score: float) -> List[Dict]:
-    """Evaluate contacts with AI and add scoring."""
+                               ai_batch_size: int, ai_min_score: float) -> tuple:
+    """Evaluate contacts with AI and add scoring.
+    
+    Returns:
+        tuple: (evaluated_contacts, token_stats) where token_stats is a dict with:
+            - total_tokens: total tokens used
+            - input_tokens: input tokens used
+            - output_tokens: output tokens used
+            - estimated_cost: estimated cost in USD
+    """
+    # Initialize token tracking
+    token_stats = {
+        "total_tokens": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost": 0.0
+    }
+    
     if not use_ai or not contacts:
         # Fallback: multi-language keyword matching
         print(f"🔍 Evaluating {len(contacts)} contacts with keyword matching (multi-language)")
@@ -57,7 +74,7 @@ async def ai_evaluate_contacts(contacts: List[Dict], use_ai: bool, client, ai_mo
         if by_language:
             print(f"  ✅ Found matches in: {', '.join([f'{lang} ({count})' for lang, count in by_language.items()])}")
         
-        return contacts
+        return contacts, token_stats
 
     # Normalize model name (fix common typos for allowed models)
     # Only gpt-4o-mini and gpt-4o are allowed
@@ -107,7 +124,7 @@ async def ai_evaluate_contacts(contacts: List[Dict], use_ai: bool, client, ai_mo
             c["AI_Score"] = 0.5
             c["AI_Field"] = c.get("Field_of_study", "Unknown")
             c["AI_Reason"] = "AI client not available"
-        return contacts
+        return contacts, token_stats
     
     evaluated = []
     total = len(contacts)
@@ -235,6 +252,24 @@ Contacts to evaluate:
         try:
             if not response:
                 raise Exception("Failed to get response after all retries")
+            
+            # Track token usage from response
+            if hasattr(response, 'usage') and response.usage:
+                usage = response.usage
+                input_tokens = getattr(usage, 'prompt_tokens', 0)
+                output_tokens = getattr(usage, 'completion_tokens', 0)
+                total_tokens = getattr(usage, 'total_tokens', input_tokens + output_tokens)
+                
+                token_stats["input_tokens"] += input_tokens
+                token_stats["output_tokens"] += output_tokens
+                token_stats["total_tokens"] += total_tokens
+                
+                # Calculate cost for this batch
+                if ai_model in AI_PRICING:
+                    pricing = AI_PRICING[ai_model]
+                    batch_cost = (input_tokens / 1_000_000 * pricing["input"]) + \
+                                 (output_tokens / 1_000_000 * pricing["output"])
+                    token_stats["estimated_cost"] += batch_cost
             
             # Parse response (strip markdown if present)
             content = response.choices[0].message.content
@@ -412,5 +447,14 @@ Contacts to evaluate:
             print(f"\n   ⚠️  WARNING: No contacts passed threshold, but max score is {max_score:.3f}")
             print(f"      Consider lowering --ai-score threshold or checking if contacts are truly relevant.")
     
-    return evaluated
+    # Display token usage summary
+    if token_stats["total_tokens"] > 0:
+        print(f"\n   💰 Token Usage & Cost:")
+        print(f"      Input tokens:  {token_stats['input_tokens']:,}")
+        print(f"      Output tokens: {token_stats['output_tokens']:,}")
+        print(f"      Total tokens:  {token_stats['total_tokens']:,}")
+        print(f"      Estimated cost: ${token_stats['estimated_cost']:.4f} USD")
+        print(f"      Model: {ai_model}")
+    
+    return evaluated, token_stats
 

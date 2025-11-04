@@ -16,6 +16,22 @@ AUTOSAVE_INTERVAL = 10  # save extracted data every N universities
 TIMEOUT = 15  # request timeout (seconds)
 EXPLORE_SUBDOMAINS = True  # Follow department/institute subdomains
 
+# HTTP retry settings
+MAX_RETRIES = 3  # number of retry attempts for failed HTTP requests
+RETRY_DELAY = 1.0  # initial retry delay in seconds (exponential backoff)
+
+# AI Token Pricing (per 1M tokens) - Updated as of 2024
+AI_PRICING = {
+    "gpt-4o-mini": {
+        "input": 0.150,   # $0.150 per 1M input tokens
+        "output": 0.600   # $0.600 per 1M output tokens
+    },
+    "gpt-4o": {
+        "input": 2.50,    # $2.50 per 1M input tokens
+        "output": 10.00   # $10.00 per 1M output tokens
+    }
+}
+
 # Browser automation settings
 USE_BROWSER = False  # Disable browser for stability - aiohttp is much faster and stable
 BROWSER_TIMEOUT = 30000  # Playwright timeout in milliseconds (30 seconds)

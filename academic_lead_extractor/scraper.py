@@ -31,7 +31,9 @@ from config import (
     EMAIL_REGEX,
     STAFF_CARD_SELECTORS,
     TITLE_HINT_CLASSES,
-    FIELD_KEYWORDS
+    FIELD_KEYWORDS,
+    MAX_RETRIES,
+    RETRY_DELAY
 )
 
 # ----------------------------------------
@@ -547,23 +549,53 @@ def looks_like_staff_page(text: str, url: str) -> bool:
 # ----------------------------------------
 
 async def fetch(session: aiohttp.ClientSession, url: str) -> str:
-    """Fetch a page with retry + rotating User-Agent."""
+    """Fetch a page with retry + rotating User-Agent and exponential backoff."""
     headers = {"User-Agent": USER_AGENTS[hash(url) % len(USER_AGENTS)]}
 
-    for attempt in range(3):
+    for attempt in range(MAX_RETRIES):
         try:
             async with session.get(url, headers=headers, timeout=TIMEOUT, allow_redirects=True) as resp:
                 if resp.status == 200 and resp.headers.get("content-type", "").startswith("text/html"):
                     html = await resp.text()
                     # Small delay after successful fetch to be polite to the server
                     await asyncio.sleep(0.3)
+                    if DEBUG and attempt > 0:
+                        print(f"   ✅ Fetch succeeded on attempt {attempt + 1}/{MAX_RETRIES} for {url[:80]}")
                     return html
+                elif resp.status >= 500:
+                    # Server error - worth retrying
+                    if DEBUG:
+                        print(f"   ⚠️  Server error {resp.status} (attempt {attempt + 1}/{MAX_RETRIES}): {url[:80]}")
+                    if attempt < MAX_RETRIES - 1:
+                        delay = RETRY_DELAY * (2 ** attempt)  # exponential backoff: 1s, 2s, 4s
+                        await asyncio.sleep(delay)
+                elif resp.status >= 400:
+                    # Client error (404, 403, etc.) - no point retrying
+                    if DEBUG:
+                        print(f"   ⚠️  Client error {resp.status}, not retrying: {url[:80]}")
+                    return ""
+        except asyncio.TimeoutError:
+            if DEBUG:
+                print(f"   ⏱️  Timeout (attempt {attempt + 1}/{MAX_RETRIES}): {url[:80]}")
+            if attempt < MAX_RETRIES - 1:
+                delay = RETRY_DELAY * (2 ** attempt)  # exponential backoff: 1s, 2s, 4s
+                await asyncio.sleep(delay)
+        except aiohttp.ClientError as e:
+            if DEBUG:
+                print(f"   ⚠️  Network error (attempt {attempt + 1}/{MAX_RETRIES}): {url[:80]} - {type(e).__name__}")
+            if attempt < MAX_RETRIES - 1:
+                delay = RETRY_DELAY * (2 ** attempt)  # exponential backoff: 1s, 2s, 4s
+                await asyncio.sleep(delay)
         except Exception as e:
             if DEBUG:
-                print(f"   ⚠️ fetch failed ({attempt+1}/3) for {url}: {e}")
-        await asyncio.sleep(0.7 * (attempt + 1))  # backoff
+                print(f"   ⚠️  Unexpected error (attempt {attempt + 1}/{MAX_RETRIES}): {url[:80]} - {e}")
+            if attempt < MAX_RETRIES - 1:
+                delay = RETRY_DELAY * (2 ** attempt)  # exponential backoff: 1s, 2s, 4s
+                await asyncio.sleep(delay)
 
-    return ""  # failed
+    if DEBUG:
+        print(f"   ❌ Failed after {MAX_RETRIES} attempts: {url[:80]}")
+    return ""  # failed after all retries
 
 
 # ----------------------------------------

@@ -4,6 +4,7 @@ Main pipeline for processing universities and extracting contacts.
 
 import asyncio
 import os
+import time
 import pandas as pd
 import aiohttp
 from aiohttp import ClientSession
@@ -63,31 +64,62 @@ async def main(university_urls=None, use_ai=True, client=None, ai_model="gpt-4o-
     
     # STEP 1: Scrape all contacts (V2 logic)
     all_contacts = []
+    university_times = {}  # Track time per university
+    total_scraping_time = 0
+    
     # Create session with proper SSL handling and connector
     connector = aiohttp.TCPConnector(ssl=False, limit=100)
     timeout = aiohttp.ClientTimeout(total=30, connect=10)
+    scraping_start = time.time()
+    
     async with ClientSession(connector=connector, headers=HEADERS, timeout=timeout) as session:
         with tqdm(total=len(universities), desc="🔍 Scanning universities") as pbar:
             for i in range(0, len(universities), UNI_PARALLEL):
                 batch = universities[i:i + UNI_PARALLEL]
+                # Track time for each university in batch
+                batch_start = time.time()
+                
                 # Pass AI parameters for link discovery
                 tasks = [process_university(session, uni, pbar, use_ai, client, ai_model) for uni in batch]
                 results = await asyncio.gather(*tasks)
                 
-                for contacts in results:
+                batch_elapsed = time.time() - batch_start
+                
+                # Assign time to each university in batch (approximation for parallel execution)
+                for uni, contacts in zip(batch, results):
+                    uni_name = uni.get("name", "Unknown")
+                    university_times[uni_name] = {
+                        "time": batch_elapsed / len(batch),  # Approximate time per uni
+                        "contacts": len(contacts)
+                    }
                     all_contacts.extend(contacts)
     
+    total_scraping_time = time.time() - scraping_start
+    
     print(f"\n✅ Extracted {len(all_contacts)} raw contacts")
+    print(f"⏱️  Scraping time: {total_scraping_time:.1f}s ({total_scraping_time/60:.1f}min)")
+    
+    # Display per-university timing
+    if university_times:
+        print(f"\n📊 Per-University Extraction Times:")
+        sorted_unis = sorted(university_times.items(), key=lambda x: x[1]["time"], reverse=True)
+        for uni_name, stats in sorted_unis[:10]:  # Show top 10 slowest
+            print(f"   {uni_name:40s}: {stats['time']:6.1f}s → {stats['contacts']} contacts")
+        if len(sorted_unis) > 10:
+            print(f"   ... and {len(sorted_unis) - 10} more universities")
     
     # STEP 2: AI evaluation (V3 logic)
-    evaluated_contacts = await ai_evaluate_contacts(
+    ai_start = time.time()
+    evaluated_contacts, token_stats = await ai_evaluate_contacts(
         all_contacts, use_ai, client, ai_model, ai_batch_size, ai_min_score
     )
+    ai_time = time.time() - ai_start
     
     # STEP 3: Filter by score
     if use_ai:
         final_contacts = [c for c in evaluated_contacts if c.get("AI_Score", 0) >= ai_min_score]
         print(f"✅ {len(final_contacts)} contacts passed AI threshold ({ai_min_score})")
+        print(f"⏱️  AI evaluation time: {ai_time:.1f}s ({ai_time/60:.1f}min)")
     else:
         final_contacts = evaluated_contacts
     
@@ -138,6 +170,33 @@ async def main(university_urls=None, use_ai=True, client=None, ai_model="gpt-4o-
         print(f"✅ {country}: {len(df)} contacts → {filename}")
         total_saved += len(df)
     
+    # Calculate total pipeline time
+    total_pipeline_time = total_scraping_time + ai_time
+    
     print(f"\n🎉 TOTAL: {total_saved} contacts across {len(by_country)} countries")
     print(f"💾 Results saved to: {output_dir}/")
+    
+    # Final summary with timing and costs
+    print(f"\n" + "="*70)
+    print(f"📈 EXTRACTION SUMMARY")
+    print(f"="*70)
+    print(f"🎯 Universities processed:     {len(universities)}")
+    print(f"📧 Total contacts extracted:   {len(all_contacts)}")
+    print(f"✅ Contacts after filtering:   {total_saved}")
+    print(f"\n⏱️  TIMING BREAKDOWN:")
+    print(f"   Scraping time:              {total_scraping_time:.1f}s ({total_scraping_time/60:.1f}min)")
+    print(f"   AI evaluation time:         {ai_time:.1f}s ({ai_time/60:.1f}min)")
+    print(f"   Total pipeline time:        {total_pipeline_time:.1f}s ({total_pipeline_time/60:.1f}min)")
+    print(f"   Avg time per university:    {total_scraping_time/len(universities):.1f}s")
+    
+    if use_ai and token_stats["total_tokens"] > 0:
+        print(f"\n💰 AI TOKEN USAGE & COST:")
+        print(f"   Input tokens:               {token_stats['input_tokens']:,}")
+        print(f"   Output tokens:              {token_stats['output_tokens']:,}")
+        print(f"   Total tokens:               {token_stats['total_tokens']:,}")
+        print(f"   Estimated cost:             ${token_stats['estimated_cost']:.4f} USD")
+        print(f"   Model used:                 {ai_model}")
+        print(f"   Cost per contact:           ${token_stats['estimated_cost']/max(1, total_saved):.4f}")
+    
+    print(f"="*70)
 
