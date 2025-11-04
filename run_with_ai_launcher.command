@@ -112,6 +112,41 @@ get_depth() {
     done
 }
 
+# Function to get AI profile detection setting
+get_ai_profile_detection() {
+    while true; do
+        echo ""
+        echo -e "${YELLOW}⚡ AI Profile Detection (Advanced):${NC}"
+        echo "  Uses AI to detect individual researcher profiles"
+        echo ""
+        echo "  1. Disabled = FAST (60-80% faster, recommended) [default]"
+        echo "  2. Enabled  = SLOW (may catch edge cases, 4-6x slower)"
+        echo ""
+        echo -e "${BLUE}💡 TIP: Keep disabled unless you need maximum completeness${NC}"
+        echo ""
+        read -p "Select option (1-2) or 'b' to go back [default: 1]: " profile_input
+        
+        case "$profile_input" in
+            b|B|back|BACK)
+                return 1
+                ;;
+            ""|1)
+                PROFILE_DETECTION_ARG=""
+                return 0
+                ;;
+            2)
+                PROFILE_DETECTION_ARG="--use-ai-profile-detection"
+                echo -e "${YELLOW}⚠️  Warning: This will make extraction 4-6x slower!${NC}"
+                sleep 1
+                return 0
+                ;;
+            *)
+                echo -e "${RED}Invalid input. Please enter 1, 2, or 'b' to go back.${NC}"
+                ;;
+        esac
+    done
+}
+
 # Main loop
 while true; do
     show_menu
@@ -126,15 +161,15 @@ while true; do
             exit 0
             ;;
         1)
-            if get_ai_model && get_ai_score && get_depth; then
+            if get_ai_model && get_ai_score && get_depth && get_ai_profile_detection; then
                 echo ""
                 echo -e "${GREEN}Running with universities.csv...${NC}"
-                python3 run_with_ai.py $AI_MODEL_ARG $AI_SCORE_ARG $DEPTH_ARG
+                python3 run_with_ai.py $AI_MODEL_ARG $AI_SCORE_ARG $DEPTH_ARG $PROFILE_DETECTION_ARG
                 break
             fi
             ;;
         2)
-            if get_ai_model && get_ai_score && get_depth; then
+            if get_ai_model && get_ai_score && get_depth && get_ai_profile_detection; then
                 while true; do
                     echo ""
                     read -p "Enter university URL (or 'b' to go back): " url
@@ -144,14 +179,14 @@ while true; do
                     elif [ -z "$url" ]; then
                         echo -e "${RED}Error: URL cannot be empty${NC}"
                     else
-                        python3 run_with_ai.py --urls "$url" $AI_MODEL_ARG $AI_SCORE_ARG $DEPTH_ARG
+                        python3 run_with_ai.py --urls "$url" $AI_MODEL_ARG $AI_SCORE_ARG $DEPTH_ARG $PROFILE_DETECTION_ARG
                         break 2
                     fi
                 done
             fi
             ;;
         3)
-            if get_ai_model && get_ai_score && get_depth; then
+            if get_ai_model && get_ai_score && get_depth && get_ai_profile_detection; then
                 while true; do
                     echo ""
                     echo "Enter URLs separated by spaces (or 'b' to go back):"
@@ -162,14 +197,14 @@ while true; do
                     elif [ -z "$urls" ]; then
                         echo -e "${RED}Error: URLs cannot be empty${NC}"
                     else
-                        python3 run_with_ai.py --urls $urls $AI_MODEL_ARG $AI_SCORE_ARG $DEPTH_ARG
+                        python3 run_with_ai.py --urls $urls $AI_MODEL_ARG $AI_SCORE_ARG $DEPTH_ARG $PROFILE_DETECTION_ARG
                         break 2
                     fi
                 done
             fi
             ;;
         4)
-            if get_ai_model && get_ai_score && get_depth; then
+            if get_ai_model && get_ai_score && get_depth && get_ai_profile_detection; then
                 while true; do
                     echo ""
                     read -p "Enter CSV filename (or 'b' to go back): " csvfile
@@ -181,7 +216,7 @@ while true; do
                     elif [ ! -f "$csvfile" ]; then
                         echo -e "${RED}Error: File '$csvfile' not found!${NC}"
                     else
-                        python3 run_with_ai.py --csv "$csvfile" $AI_MODEL_ARG $AI_SCORE_ARG $DEPTH_ARG
+                        python3 run_with_ai.py --csv "$csvfile" $AI_MODEL_ARG $AI_SCORE_ARG $DEPTH_ARG $PROFILE_DETECTION_ARG
                         break 2
                     fi
                 done

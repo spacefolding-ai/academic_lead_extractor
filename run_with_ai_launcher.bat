@@ -61,6 +61,36 @@ set depth_arg=
 if "%depth%"=="1" set depth_arg=--depth 1
 if "%depth%"=="3" set depth_arg=--depth 3
 
+:get_ai_profile_detection
+echo.
+color 0E
+echo ========================================
+echo  AI Profile Detection (Advanced)
+echo ========================================
+color 0B
+echo   Uses AI to detect individual researcher profiles
+echo.
+echo   1. Disabled = FAST (60-80%% faster, recommended) [default]
+echo   2. Enabled  = SLOW (may catch edge cases, 4-6x slower)
+echo.
+echo   TIP: Keep disabled unless you need maximum completeness
+echo.
+set /p profile_detection="Select option (1-2) or 'b' to go back [default: 1]: "
+
+if /i "%profile_detection%"=="b" goto main_menu
+if /i "%profile_detection%"=="back" goto main_menu
+
+set profile_detection_arg=
+if "%profile_detection%"=="" set profile_detection=1
+if "%profile_detection%"=="2" (
+    set profile_detection_arg=--use-ai-profile-detection
+    color 0E
+    echo.
+    echo WARNING: This will make extraction 4-6x slower!
+    timeout /t 2 >nul
+    color 0B
+)
+
 if "%choice%"=="1" goto option1
 if "%choice%"=="2" goto option2
 if "%choice%"=="3" goto option3
@@ -70,7 +100,7 @@ goto invalid_choice
 :option1
 echo.
 echo Running with universities.csv...
-python run_with_ai.py %ai_model_arg% %ai_score_arg% %depth_arg%
+python run_with_ai.py %ai_model_arg% %ai_score_arg% %depth_arg% %profile_detection_arg%
 goto end
 
 :option2
@@ -84,7 +114,7 @@ if "%url%"=="" (
     echo Error: URL cannot be empty
     goto get_url
 )
-python run_with_ai.py --urls %url% %ai_model_arg% %ai_score_arg% %depth_arg%
+python run_with_ai.py --urls %url% %ai_model_arg% %ai_score_arg% %depth_arg% %profile_detection_arg%
 goto end
 
 :option3
@@ -99,7 +129,7 @@ if "%urls%"=="" (
     echo Error: URLs cannot be empty
     goto get_urls
 )
-python run_with_ai.py --urls %urls% %ai_model_arg% %ai_score_arg% %depth_arg%
+python run_with_ai.py --urls %urls% %ai_model_arg% %ai_score_arg% %depth_arg% %profile_detection_arg%
 goto end
 
 :option4
@@ -117,7 +147,7 @@ if not exist "%csvfile%" (
     echo Error: File "%csvfile%" not found!
     goto get_csv
 )
-python run_with_ai.py --csv "%csvfile%" %ai_model_arg% %ai_score_arg% %depth_arg%
+python run_with_ai.py --csv "%csvfile%" %ai_model_arg% %ai_score_arg% %depth_arg% %profile_detection_arg%
 goto end
 
 :invalid_choice

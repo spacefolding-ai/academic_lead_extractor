@@ -666,7 +666,7 @@ def is_academic_email(email: str) -> bool:
 # ----------------------------------------
 
 class StaffCrawler:
-    def __init__(self, start_url: str, use_ai: bool = False, client=None, ai_model: str = "gpt-4o-mini"):
+    def __init__(self, start_url: str, use_ai: bool = False, client=None, ai_model: str = "gpt-4o-mini", use_ai_profile_detection: bool = False):
         self.start_url = start_url
         self.domain = urlparse(start_url).netloc
         self.visited: Set[str] = set()
@@ -676,6 +676,7 @@ class StaffCrawler:
         self.use_ai = use_ai
         self.client = client
         self.ai_model = ai_model
+        self.use_ai_profile_detection = use_ai_profile_detection  # Control AI profile detection
         self.ai_filtered_count = 0  # Track how many pages were filtered out by AI
         self.ai_discovered_urls: Set[str] = set()  # Track AI-discovered URLs
 
@@ -742,9 +743,9 @@ class StaffCrawler:
         # Detect potential staff pages OR subdomain homepages
         is_staff_page = looks_like_staff_page(title, url)
         
-        # If not detected by regex but AI is enabled, check with AI
-        # This is slower but more accurate for edge cases
-        if not is_staff_page and self.use_ai and self.client:
+        # If not detected by regex but AI profile detection is enabled, check with AI
+        # This is slower but more accurate for edge cases (disabled by default for performance)
+        if not is_staff_page and self.use_ai_profile_detection and self.use_ai and self.client:
             page_text_preview = _collect_page_text(tree)[:1500]
             is_staff_page = await ai_detect_profile_page(url, title, page_text_preview, self.client, self.ai_model)
             if is_staff_page and DEBUG:
@@ -1443,7 +1444,7 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
 # UNIVERSITY PROCESSING WRAPPER
 # ----------------------------------------
 
-async def process_university(session, uni: dict, pbar=None, use_ai=False, client=None, ai_model="gpt-4o-mini") -> List[Dict]:
+async def process_university(session, uni: dict, pbar=None, use_ai=False, client=None, ai_model="gpt-4o-mini", use_ai_profile_detection=False) -> List[Dict]:
     """
     Process a single university: crawl staff pages and extract contacts.
     
@@ -1454,6 +1455,7 @@ async def process_university(session, uni: dict, pbar=None, use_ai=False, client
         use_ai: whether AI is enabled (for link discovery)
         client: OpenAI client (for AI-powered link discovery)
         ai_model: AI model name
+        use_ai_profile_detection: whether to use AI for individual profile page detection (slower)
     
     Returns:
         List of contact dictionaries with university metadata
@@ -1469,7 +1471,7 @@ async def process_university(session, uni: dict, pbar=None, use_ai=False, client
     
     try:
         # Create crawler with AI parameters and run
-        crawler = StaffCrawler(url, use_ai=use_ai, client=client, ai_model=ai_model)
+        crawler = StaffCrawler(url, use_ai=use_ai, client=client, ai_model=ai_model, use_ai_profile_detection=use_ai_profile_detection)
         contacts = await crawler.crawl()
         
         # Add university metadata to each contact

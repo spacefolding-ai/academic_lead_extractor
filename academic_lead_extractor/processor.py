@@ -19,7 +19,7 @@ from academic_lead_extractor.enrichment import enrich_publications
 
 
 async def main(university_urls=None, use_ai=True, client=None, ai_model="gpt-4o-mini",
-               ai_batch_size=20, ai_min_score=0.5):
+               ai_batch_size=20, ai_min_score=0.5, use_ai_profile_detection=False):
     """Main pipeline for academic lead extraction."""
     # Validate AI score threshold
     if not 0.0 <= ai_min_score <= 1.0:
@@ -79,8 +79,8 @@ async def main(university_urls=None, use_ai=True, client=None, ai_model="gpt-4o-
                 # Track time for each university in batch
                 batch_start = time.time()
                 
-                # Pass AI parameters for link discovery
-                tasks = [process_university(session, uni, pbar, use_ai, client, ai_model) for uni in batch]
+                # Pass AI parameters for link discovery and profile detection
+                tasks = [process_university(session, uni, pbar, use_ai, client, ai_model, use_ai_profile_detection) for uni in batch]
                 results = await asyncio.gather(*tasks)
                 
                 batch_elapsed = time.time() - batch_start

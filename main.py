@@ -112,6 +112,12 @@ Examples:
         help='AI model to use: gpt-4o-mini (fast, cost-efficient), gpt-4o (stronger understanding)'
     )
     
+    parser.add_argument(
+        '--use-ai-profile-detection',
+        action='store_true',
+        help='Enable AI-based individual profile page detection (slower but may catch edge cases)'
+    )
+    
     # Exploration depth options
     depth_group = parser.add_argument_group('exploration depth')
     depth_group.add_argument(
@@ -237,6 +243,9 @@ def main():
             print(f"❌ Error: No valid URLs found in '{args.csv}'")
             sys.exit(1)
     
+    # Get AI profile detection flag
+    use_ai_profile_detection = args.use_ai_profile_detection
+    
     # Run the main extraction
     asyncio.run(run_pipeline(
         university_urls=university_urls,
@@ -244,7 +253,8 @@ def main():
         client=client_obj,
         ai_model=ai_model,
         ai_batch_size=AI_BATCH_SIZE,
-        ai_min_score=ai_min_score
+        ai_min_score=ai_min_score,
+        use_ai_profile_detection=use_ai_profile_detection
     ))
 
 
