@@ -31,14 +31,25 @@ KEYWORDS_INCLUDE = [
     "power electronics", "energy systems", "renewable energy", "sustainable power",
     "battery management", "bms", "energy storage", "power conversion",
     "microgrid", "smart grid", "powertrain", "drives", "electric drives",
-    "hydrogen systems", "fuel cells", "photovoltaics", "solar energy", "wind energy",
+    "hydrogen systems", "fuel cell", "photovoltaics", "solar energy", "wind energy",
+    "DC-DC", "AC-DC", "DC‑DC converter", "active power", "reactive power", "virtual inertia", "active damping", "protection relay",
+    "Ancillary services", "Asynchronous generator", "battery energy storage", "flywheel", "interleaved",
+    "Bidirectional", "bidirectional charger", "BLDC", "Boost converter", "BMS", "battery management system", "MPPT",
+    "distributed generation", "DER", "DSP", "dual active bridge", "DAB", "electric vehicle", "EV", "HEV", "ground fault", "overvoltage",
+    "undervoltage", "electric propulsion", "energy management", "harmonic", "harmonic compensation", "dspace", "opal-rt", "Speedgoat", "plecs",
+    "DIgSILENT", "PowerFactory", "PSCAD", "RTDS", "etap", "neplan", "opendss", "psim", "Simscape Electrical", "rt-lab", "hypersim", "ltspice",
+    "fault protection", "IEC 61850", "UPS", "IEEE 1547-2018", "interconnection", "IGBT", "MOSFET", "induction motor",
+    "admittance", "impedance", "conductance", "susceptance", "reactance", "islanding detection", "anti-islanding", "modular multilevel converter",
+    "MMC", "multilevel inverter", "grid compliance", "partial shading", "Plug‑in electric", "power flow", "power quality", "THD", "active filter",
+    "Z‑source", "PMSM", "synchronous motor", "Short‑circuit analysis", "SOC balancing", "state‑of‑charge", "virtual synchronous generator", "Vehicle‑to‑grid",
+    "grid‑to‑vehicle", "Voltage‑source inverter", "voltage regulation", "power system stability", "WAMS", "wind turbine",
 
     # Control & Automation
     "control systems", "automatic control", "digital control",
-    "model predictive control", "motion control", "robust control",
+    "droop", "robust control", "sliding mode control", "PLL", "model predictive control", "motion control",
 
     # Embedded / Real-Time / Simulation
-    "embedded systems", "real-time simulation", "hardware-in-the-loop", "hil",
+    "embedded systems", "real-time simulation", "hardware-in-the-loop", "Controller‑hardware‑in‑the‑loop", "hil", "c-hil", "p-hil",
     "cyber-physical systems", "digital twin", "time sensitive networking",
 
     # Electrical Engineering / Mechatronics
@@ -58,318 +69,8 @@ KEYWORDS_EXCLUDE = [
 # (for universities in non-English speaking countries)
 # ---------------------------
 
-KEYWORDS_BY_LANGUAGE = {
-    "German": [
-        "leistungselektronik", "energiesysteme", "erneuerbare energie", "nachhaltige energie",
-        "mikronetz", "smart grid", "batteriemanagement", "energiespeicher",
-        "antriebsstrang", "antriebe", "elektrische antriebe", "fahrzeugelektrifizierung",
-        "regelsysteme", "regelungstechnik", "digitale regelung", "systemdynamik",
-        "automatisierungstechnik", "bewegungssteuerung",
-        "eingebettete systeme", "echtzeitsimulation", "hardware-in-the-loop",
-        "elektrotechnik", "mechatronik", "messtechnik", "energietechnik",
-        "windenergie", "solarenergie", "photovoltaik", "brennstoffzellen", "wasserstoffsysteme"
-    ],
-    "Italian": [
-        "elettronica di potenza", "sistemi energetici", "energia rinnovabile",
-        "microrete", "gestione batterie", "accumulo energia",
-        "sistemi di controllo", "controllo automatico", "controllo digitale",
-        "sistemi embedded", "simulazione in tempo reale",
-        "ingegneria elettrica", "meccatronica", "strumentazione", "sistemi di potenza",
-        "energia eolica", "energia solare", "fotovoltaico", "celle a combustibile"
-    ],
-    "French": [
-        "électronique de puissance", "systèmes énergétiques", "énergie renouvelable",
-        "microréseau", "gestion de batterie", "stockage d'énergie",
-        "systèmes de contrôle", "contrôle automatique", "contrôle numérique",
-        "systèmes embarqués", "simulation temps réel",
-        "génie électrique", "mécatronique", "instrumentation",
-        "énergie éolienne", "énergie solaire", "photovoltaïque", "piles à combustible"
-    ],
-    "Spanish": [
-        "electrónica de potencia", "sistemas energéticos", "energía renovable",
-        "microrred", "gestión de baterías", "almacenamiento de energía",
-        "sistemas de control", "control automático", "control digital",
-        "sistemas embebidos", "simulación en tiempo real",
-        "ingeniería eléctrica", "mecatrónica", "instrumentación",
-        "energía eólica", "energía solar", "fotovoltaica", "pilas de combustible"
-    ],
-    "Portuguese": [
-        "eletrônica de potência", "sistemas energéticos", "energia renovável",
-        "microrede", "gestão de baterias", "armazenamento de energia",
-        "sistemas de controle", "controle automático", "controle digital",
-        "sistemas embarcados", "simulação em tempo real",
-        "engenharia elétrica", "mecatrônica", "instrumentação",
-        "energia eólica", "energia solar", "fotovoltaica", "células de combustível"
-    ],
-    "Dutch": [
-        "vermogenselektronica", "energiesystemen", "hernieuwbare energie",
-        "microgrid", "batterijbeheer", "energieopslag",
-        "regelsystemen", "automatische besturing", "digitale regeling",
-        "embedded systemen", "realtime simulatie",
-        "elektrotechniek", "mechatronica", "instrumentatie",
-        "windenergie", "zonne-energie", "fotovoltaïsche", "brandstofcellen"
-    ],
-    "Polish": [
-        "elektronika mocy", "systemy energetyczne", "energia odnawialna",
-        "mikrosieć", "zarządzanie bateriami", "magazynowanie energii",
-        "systemy sterowania", "automatyka", "sterowanie cyfrowe",
-        "systemy wbudowane", "symulacja czasu rzeczywistego",
-        "elektrotechnika", "mechatronika", "oprzyrządowanie",
-        "energia wiatrowa", "energia słoneczna", "fotowoltaika", "ogniwa paliwowe"
-    ],
-    "Czech": [
-        "výkonová elektronika", "energetické systémy", "obnovitelná energie",
-        "mikrosíť", "správa baterií", "ukládání energie",
-        "řídicí systémy", "automatické řízení", "digitální řízení",
-        "vestavěné systémy", "simulace v reálném čase",
-        "elektrotechnika", "mechatronika", "přístrojová technika",
-        "větrná energie", "solární energie", "fotovoltaika", "palivové články"
-    ],
-    "Swedish": [
-        "kraftelektronik", "energisystem", "förnybar energi",
-        "mikronät", "batterihantering", "energilagring",
-        "styrsystem", "automatisk styrning", "digital styrning",
-        "inbyggda system", "realtidssimulering",
-        "elektroteknik", "mekatronik", "instrumentering",
-        "vindenergi", "solenergi", "fotovoltaik", "bränsleceller"
-    ],
-    "Norwegian": [
-        "kraftelektronikk", "energisystemer", "fornybar energi",
-        "mikronett", "batteristyring", "energilagring",
-        "kontrollsystemer", "automatisk kontroll", "digital kontroll",
-        "innebygde systemer", "sanntidssimulering",
-        "elektroteknikk", "mekatronikk", "instrumentering",
-        "vindenergi", "solenergi", "fotovoltaisk", "brenselceller"
-    ],
-    "Danish": [
-        "effektelektronik", "energisystemer", "vedvarende energi",
-        "mikronet", "batteristyring", "energilagring",
-        "kontrolsystemer", "automatisk kontrol", "digital kontrol",
-        "indlejrede systemer", "realtidssimulering",
-        "elektroteknik", "mekatronik", "instrumentering",
-        "vindenergi", "solenergi", "fotovoltaisk", "brændselsceller"
-    ],
-    "Finnish": [
-        "tehoelektroniikka", "energiajärjestelmät", "uusiutuva energia",
-        "mikroverkko", "akkujen hallinta", "energian varastointi",
-        "säätöjärjestelmät", "automaattinen säätö", "digitaalinen säätö",
-        "sulautetut järjestelmät", "reaaliaikasimulointi",
-        "sähkötekniikka", "mekatroniikka", "mittaustekniikka",
-        "tuulienergia", "aurinkoenergia", "aurinkosähkö", "polttokennot"
-    ],
-    "Greek": [
-        "ηλεκτρονικά ισχύος", "ενεργειακά συστήματα", "ανανεώσιμη ενέργεια",
-        "μικροδίκτυο", "διαχείριση μπαταριών", "αποθήκευση ενέργειας",
-        "συστήματα ελέγχου", "αυτόματος έλεγχος",
-        "ενσωματωμένα συστήματα", "προσομοίωση πραγματικού χρόνου",
-        "ηλεκτρολογία", "μηχατρονική", "οργανολογία",
-        "αιολική ενέργεια", "ηλιακή ενέργεια", "φωτοβολταϊκά", "κυψέλες καυσίμου"
-    ],
-    "Turkish": [
-        "güç elektroniği", "enerji sistemleri", "yenilenebilir enerji",
-        "mikro şebeke", "batarya yönetimi", "enerji depolama",
-        "kontrol sistemleri", "otomatik kontrol", "dijital kontrol",
-        "gömülü sistemler", "gerçek zamanlı simülasyon",
-        "elektrik mühendisliği", "mekatronik", "enstrümantasyon",
-        "rüzgar enerjisi", "güneş enerjisi", "fotovoltaik", "yakıt hücreleri"
-    ],
-    "Albanian": [
-        "elektronika e fuqisë", "sistemet energjetike", "energji e rinovueshme",
-        "rrjet mikro", "menaxhimi i baterive", "ruajtja e energjisë",
-        "sistemet e kontrollit", "kontroll automatik", "kontroll dixhital",
-        "sistemet e integruara", "simulim në kohë reale",
-        "inxhinieri elektrike", "mekatronikë", "instrumentacion",
-        "energji e erës", "energji diellore", "fotovoltaike", "qelizat e karburantit"
-    ],
-    "Armenian": [
-        "հզորության էլեկտրոնիկա", "էներգետիկ համակարգեր", "վերականգնվող էներգիա",
-        "միկրոցանց", "մարտկոցների կառավարում", "էներգիայի պահպանում",
-        "կառավարման համակարգեր", "ավտոմատ կառավարում",
-        "ներկառուցված համակարգեր", "իրական ժամանակի մոդելավորում",
-        "էլեկտրատեխնիկա", "մեխատրոնիկա",
-        "քամու էներգիա", "արևային էներգիա", "ֆոտովոլտային"
-    ],
-    "Belarusian": [
-        "сілавая электроніка", "энергетычныя сістэмы", "аднаўляльная энергія",
-        "мікрасетка", "кіраванне батарэямі", "захоўванне энергіі",
-        "сістэмы кіравання", "аўтаматычнае кіраванне",
-        "убудаваныя сістэмы", "мадэляванне ў рэжыме рэальнага часу",
-        "электратэхніка", "мехатроніка",
-        "ветраная энергія", "сонечная энергія", "фотавальтаіка"
-    ],
-    "Bulgarian": [
-        "силова електроника", "енергийни системи", "възобновяема енергия",
-        "микромрежа", "управление на батерии", "съхранение на енергия",
-        "системи за управление", "автоматично управление", "цифрово управление",
-        "вградени системи", "симулация в реално време",
-        "електротехника", "мехатроника", "инструментация",
-        "вятърна енергия", "слънчева енергия", "фотоволтаици", "горивни клетки"
-    ],
-    "Croatian": [
-        "energetska elektronika", "energetski sustavi", "obnovljiva energija",
-        "mikromreža", "upravljanje baterijama", "pohrana energije",
-        "sustavi upravljanja", "automatsko upravljanje", "digitalno upravljanje",
-        "ugrađeni sustavi", "simulacija u stvarnom vremenu",
-        "elektrotehnika", "mehatronika", "instrumentacija",
-        "energija vjetra", "solarna energija", "fotonaponski", "gorivne ćelije"
-    ],
-    "Estonian": [
-        "võimelektroonika", "energiasüsteemid", "taastuv energia",
-        "mikrovõrk", "akude haldamine", "energia salvestamine",
-        "juhtimissüsteemid", "automaatjuhtimine", "digitaaljuhtimine",
-        "süsteemsed süsteemid", "reaalajas simuleerimine",
-        "elektrotehnika", "mehatroonika", "instrumentatsioon",
-        "tuuleenergia", "päikeseenergia", "fotovoltaika", "kütuseelemendid"
-    ],
-    "Georgian": [
-        "სიმძლავრის ელექტრონიკა", "ენერგეტიკული სისტემები", "განახლებადი ენერგია",
-        "მიკროქსელი", "ბატარეების მართვა", "ენერგიის შენახვა",
-        "კონტროლის სისტემები", "ავტომატური კონტროლი",
-        "ჩაშენებული სისტემები", "რეალურ დროში სიმულაცია",
-        "ელექტროტექნიკა", "მეხატრონიკა",
-        "ქარის ენერგია", "მზის ენერგია", "ფოტოელექტრული"
-    ],
-    "Hungarian": [
-        "teljesítményelektronika", "energiarendszerek", "megújuló energia",
-        "mikrohálózat", "akkumulátor kezelés", "energiatárolás",
-        "vezérlőrendszerek", "automatikus vezérlés", "digitális vezérlés",
-        "beágyazott rendszerek", "valós idejű szimuláció",
-        "villamosmérnöki", "mechatronika", "műszerezés",
-        "szélenergia", "napenergia", "fotovoltaikus", "üzemanyagcellák"
-    ],
-    "Icelandic": [
-        "aflrafeindatækni", "orkukerfi", "endurnýjanleg orka",
-        "örnet", "rafhlöðustjórnun", "orkugeymsla",
-        "stýrikerfi", "sjálfvirk stýring", "stafræn stýring",
-        "innbyggð kerfi", "rauntíma hermir",
-        "rafmagnsverkfræði", "véltækni", "mælitækni",
-        "vindorka", "sólarorka", "ljósrafafl", "eldsneytiselda"
-    ],
-    "Latvian": [
-        "jaudas elektronika", "enerģijas sistēmas", "atjaunojamā enerģija",
-        "mikrotīkls", "akumulatoru pārvaldība", "enerģijas uzglabāšana",
-        "vadības sistēmas", "automātiskā vadība", "digitālā vadība",
-        "iegultās sistēmas", "reāllaika simulācija",
-        "elektrotehnika", "mehatronika", "instrumentācija",
-        "vēja enerģija", "saules enerģija", "fotovoltaiskais", "degvielas šūnas"
-    ],
-    "Lithuanian": [
-        "galios elektronika", "energijos sistemos", "atsinaujinanti energija",
-        "mikrotinklas", "baterijų valdymas", "energijos saugojimas",
-        "valdymo sistemos", "automatinis valdymas", "skaitmeninis valdymas",
-        "įterptinės sistemos", "realaus laiko modeliavimas",
-        "elektrotechnika", "mechatronika", "prietaisai",
-        "vėjo energija", "saulės energija", "fotovoltinis", "kuro elementai"
-    ],
-    "Romanian": [
-        "electronică de putere", "sisteme energetice", "energie regenerabilă",
-        "microreţea", "gestionarea bateriilor", "stocare energie",
-        "sisteme de control", "control automat", "control digital",
-        "sisteme embedded", "simulare în timp real",
-        "inginerie electrică", "mecatronică", "instrumentaţie",
-        "energie eoliană", "energie solară", "fotovoltaică", "celule combustibil"
-    ],
-    "Serbian": [
-        "elektronika snage", "energetski sistemi", "obnovljiva energija",
-        "mikromreža", "upravljanje baterijama", "skladištenje energije",
-        "kontrolni sistemi", "automatska kontrola", "digitalna kontrola",
-        "ugrađeni sistemi", "simulacija u realnom vremenu",
-        "elektrotehnika", "mehatronika", "instrumentacija",
-        "energija vetra", "solarna energija", "fotonaponska", "gorivne ćelije"
-    ],
-    "Slovak": [
-        "výkonová elektronika", "energetické systémy", "obnoviteľná energia",
-        "mikrosieť", "správa batérií", "skladovanie energie",
-        "riadiace systémy", "automatické riadenie", "digitálne riadenie",
-        "vstavaný systémy", "simulácia v reálnom čase",
-        "elektrotechnika", "mechatronika", "prístrojová technika",
-        "veterná energia", "solárna energia", "fotovoltaika", "palivové články"
-    ],
-    "Slovenian": [
-        "močnostna elektronika", "energetski sistemi", "obnovljiva energija",
-        "mikromrežo", "upravljanje baterij", "shranjevanje energije",
-        "krmilni sistemi", "avtomatsko krmiljenje", "digitalno krmiljenje",
-        "vdelani sistemi", "simulacija v realnem času",
-        "elektrotehniko", "mehatronika", "instrumentacija",
-        "energija vetra", "sončna energija", "fotovoltaika", "gorivne celice"
-    ],
-    "Ukrainian": [
-        "силова електроніка", "енергетичні системи", "відновлювана енергія",
-        "мікромережа", "управління батареями", "зберігання енергії",
-        "системи керування", "автоматичне керування", "цифрове керування",
-        "вбудовані системи", "моделювання в реальному часі",
-        "електротехніка", "мехатроніка", "приладобудування",
-        "вітрова енергія", "сонячна енергія", "фотовольтаїка", "паливні елементи"
-    ],
-    "Macedonian": [
-        "моќна електроника", "енергетски системи", "обновлива енергија",
-        "микромрежа", "управување со батерии", "складирање на енергија",
-        "контролни системи", "автоматска контрола", "дигитална контрола",
-        "вградени системи", "симулација во реално време",
-        "електротехника", "мехатроника", "инструментација",
-        "енергија од ветер", "соларна енергија", "фотоволтаика", "горивни ќелии"
-    ],
-    "English": [
-        # Same as KEYWORDS_INCLUDE - for UK/Ireland/Malta
-        "power electronics", "energy systems", "renewable energy", "sustainable power",
-        "microgrid", "smart grid", "battery management", "energy storage",
-        "control systems", "automatic control", "digital control",
-        "embedded systems", "real-time simulation", "hardware-in-the-loop",
-        "electrical engineering", "mechatronics", "instrumentation",
-        "wind energy", "solar energy", "photovoltaics", "fuel cells"
-    ]
-}
-
-# ---------------------------
-# COUNTRY → LANGUAGE MAPPING
-# ---------------------------
-
-COUNTRY_LANGUAGE = {
-    "Albania": "Albanian",
-    "Armenia": "Armenian",
-    "Austria": "German",
-    "Belarus": "Belarusian",
-    "Belgium": "French",  # Also Dutch, but French more common for universities
-    "Bosnia and Herzegovina": "Serbian",  # Also Croatian, Bosnian
-    "Bulgaria": "Bulgarian",
-    "Croatia": "Croatian",
-    "Cyprus": "Greek",
-    "Czech Republic": "Czech",
-    "Czechia": "Czech",
-    "Denmark": "Danish",
-    "Estonia": "Estonian",
-    "Finland": "Finnish",
-    "Georgia": "Georgian",
-    "Germany": "German",
-    "Greece": "Greek",
-    "Hungary": "Hungarian",
-    "Iceland": "Icelandic",
-    "Ireland": "English",
-    "Italy": "Italian",
-    "Kosovo": "Serbian",  # Also Albanian
-    "Latvia": "Latvian",
-    "Lithuania": "Lithuanian",
-    "Luxembourg": "French",  # Also German, Luxembourgish
-    "Malta": "English",
-    "Moldova": "Romanian",
-    "Montenegro": "Serbian",
-    "Netherlands": "Dutch",
-    "North Macedonia": "Macedonian",
-    "Norway": "Norwegian",
-    "Poland": "Polish",
-    "Portugal": "Portuguese",
-    "Romania": "Romanian",
-    "Serbia": "Serbian",
-    "Slovakia": "Slovak",
-    "Slovenia": "Slovenian",
-    "Spain": "Spanish",
-    "Sweden": "Swedish",
-    "Switzerland": "German",  # Also French, Italian
-    "Turkey": "Turkish",
-    "Tuerkiye": "Turkish",
-    "Ukraine": "Ukrainian",
-    "United Kingdom": "English"
-}
+# Import multilingual keywords from separate file for better maintainability
+from keywords_multilingual import KEYWORDS_BY_LANGUAGE, COUNTRY_LANGUAGE
 
 # ---------------------------
 # SCRAPER CONFIGURATION
