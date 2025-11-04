@@ -40,7 +40,7 @@ async def ai_evaluate_contacts(contacts: List[Dict], use_ai: bool, client, ai_mo
         print(f"🔍 Evaluating {len(contacts)} contacts with keyword matching (multi-language)")
         
         for c in contacts:
-            text = (c.get("Title_role", "") + " " + c.get("page_text", "")).lower()
+            text = (c.get("Title", "") + " " + c.get("Role", "") + " " + c.get("page_text", "")).lower()
             
             # Get keywords for this contact's country/language
             keywords_to_check = list(KEYWORDS_INCLUDE)  # Start with English keywords

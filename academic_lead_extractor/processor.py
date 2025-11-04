@@ -156,7 +156,8 @@ async def main(university_urls=None, use_ai=True, client=None, ai_model="gpt-4o-
             df["Publications"] = df["Publications"].apply(lambda x: ", ".join(x) if isinstance(x, list) and x else "")
         
         columns = [
-            "Full_name", "Email", "Title", "Role", "AI_Field", "AI_Score", "AI_Reason",
+            "Full_name", "Email", "Title", "Role", "Field_of_study", "University_Field_of_Study",
+            "AI_Field", "AI_Score", "AI_Reason",
             "University", "Country", "University_Website_URL", "Source_URL", "Publications"
         ]
         

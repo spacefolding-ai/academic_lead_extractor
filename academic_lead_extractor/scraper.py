@@ -1118,27 +1118,33 @@ def _extract_academic_title(name: str) -> tuple:
     """
     Extract academic title from name and return (title, clean_name).
     Example: "Prof. Dr. John Smith" → ("Prof. Dr.", "John Smith")
+    Example: "Prof. Dr.-Ing., Researcher" → ("Prof. Dr.-Ing.", "Researcher")
     """
     if not name:
         return ("", name)
     
     # Academic title patterns (order matters - check longer patterns first)
+    # Allow titles to be followed by space, comma, or end of string
     title_patterns = [
-        r'^(Prof\.\s*Dr\.-Ing\.|Professor\s*Dr\.-Ing\.)\s+',
-        r'^(Prof\.\s*Dr\.|Professor\s*Dr\.)\s+',
-        r'^(Dr\.-Ing\.|Dr\.\s*Ing\.)\s+',
-        r'^(Dr\.\s*rer\.\s*nat\.|Dr\.\s*rer\.nat\.)\s+',
-        r'^(Dr\.\s*phil\.)\s+',
-        r'^(Prof\.)\s+',
-        r'^(Dr\.)\s+',
-        r'^(Professor)\s+',
-        r'^(PhD)\s+',
+        r'^(Prof\.\s*Dr\.-Ing\.|Professor\s*Dr\.-Ing\.)(?:\s+|,\s*|$)',
+        r'^(Prof\.\s*Dr\.|Professor\s*Dr\.)(?:\s+|,\s*|$)',
+        r'^(Dr\.-Ing\.|Dr\.\s*Ing\.)(?:\s+|,\s*|$)',
+        r'^(Dr\.\s*rer\.\s*nat\.|Dr\.\s*rer\.nat\.)(?:\s+|,\s*|$)',
+        r'^(Dr\.\s*phil\.)(?:\s+|,\s*|$)',
+        r'^(M\.Sc\.|M\.S\.|MSc)(?:\s+|,\s*|$)',
+        r'^(B\.Sc\.|B\.S\.|BSc)(?:\s+|,\s*|$)',
+        r'^(Dipl\.-Ing\.|Diplom-Ingenieur)(?:\s+|,\s*|$)',
+        r'^(Prof\.)(?:\s+|,\s*|$)',
+        r'^(Dr\.)(?:\s+|,\s*|$)',
+        r'^(Professor)(?:\s+|,\s*|$)',
+        r'^(PhD)(?:\s+|,\s*|$)',
     ]
     
     for pattern in title_patterns:
         match = re.search(pattern, name, re.IGNORECASE)
         if match:
             title = match.group(1).strip()
+            # Remove the title and the separator (space or comma)
             clean_name = re.sub(pattern, '', name, flags=re.IGNORECASE).strip()
             return (title, clean_name)
     
@@ -1167,17 +1173,79 @@ def _split_title_and_role(title_role_str: str) -> tuple:
 
 
 def _guess_field_from_text(txt: str) -> str:
+    """Detect field of study from text content using keyword matching."""
     txt_l = txt.lower()
+    field_scores = {}
+    
+    # Count keyword matches for each field
     for field, kws in FIELD_KEYWORDS.items():
+        score = 0
         for kw in kws:
             if kw in txt_l:
-                return field
+                score += 1
+        if score > 0:
+            field_scores[field] = score
+    
+    # Return field with highest score
+    if field_scores:
+        return max(field_scores.items(), key=lambda x: x[1])[0]
+    return ""
+
+
+def _detect_university_field(url: str, page_title: str, page_text: str) -> str:
+    """
+    Detect the primary field of study for a university department/institute
+    based on URL, title, and page content.
+    
+    Returns a comma-separated string of detected fields (up to 2 primary fields).
+    """
+    combined_text = f"{url} {page_title} {page_text[:3000]}".lower()
+    field_scores = {}
+    
+    # Score each field based on keyword frequency
+    for field, kws in FIELD_KEYWORDS.items():
+        score = 0
+        for kw in kws:
+            # Count occurrences (up to 5 per keyword to avoid over-weighting)
+            count = min(combined_text.count(kw), 5)
+            score += count
+        
+        # Bonus points for field keywords in URL or title (strong signals)
+        url_lower = url.lower()
+        title_lower = page_title.lower()
+        for kw in kws[:5]:  # Check top 5 keywords per field
+            if kw in url_lower:
+                score += 10
+            if kw in title_lower:
+                score += 5
+        
+        if score > 0:
+            field_scores[field] = score
+    
+    # Return top 2 fields if they have significant scores
+    if not field_scores:
+        return ""
+    
+    sorted_fields = sorted(field_scores.items(), key=lambda x: x[1], reverse=True)
+    
+    # If top field has score >= 2, it's confident (lowered threshold for better detection)
+    # Higher scores indicate stronger confidence (e.g., keyword in URL/title = +10/+5 points)
+    if sorted_fields[0][1] >= 2:
+        # Include second field if it has at least 40% of top score
+        if len(sorted_fields) > 1 and sorted_fields[1][1] >= sorted_fields[0][1] * 0.4:
+            return f"{sorted_fields[0][0]}, {sorted_fields[1][0]}"
+        return sorted_fields[0][0]
+    
     return ""
 
 
 def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
     tree = HTMLParser(html)
     page_text = _collect_page_text(tree)
+    page_title = (tree.css_first("title").text(strip=True) if tree.css_first("title") else "")
+    
+    # Detect university/department field of study from page content
+    university_field = _detect_university_field(page_url, page_title, page_text)
 
     contacts: List[Dict] = []
 
@@ -1296,6 +1364,7 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
                 "Title": academic_title,
                 "Role": role,
                 "Field_of_study": _guess_field_from_text(node_text) or "",
+                "University_Field_of_Study": university_field,
                 "page_text": page_text[:10000],  # Always use full page context for AI
                 "source_url": page_url,
             })
@@ -1335,6 +1404,7 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
                     "Title": academic_title,
                     "Role": role,
                     "Field_of_study": _guess_field_from_text(node_text) or "",
+                    "University_Field_of_Study": university_field,
                     "page_text": page_text[:10000],  # Always use full page context for AI
                     "source_url": page_url,
                 })
@@ -1386,6 +1456,7 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
                         "Title": academic_title,
                         "Role": role,
                         "Field_of_study": _guess_field_from_text(t),
+                        "University_Field_of_Study": university_field,
                         "page_text": page_text[:10000],  # Always use full page context for AI
                         "source_url": page_url,
                     })
@@ -1415,10 +1486,10 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
         
         key = (c.get("Email", "").lower(), (c.get("Full_name", "") or "").lower())
         if key in dedup:
-            # prefer record that has a non-empty title / field / longer page_text
+            # prefer record that has a non-empty title / role / field / longer page_text
             old = dedup[key]
-            if len(_join_clean([c.get("Title_role", ""), c.get("Field_of_study", "")])) > \
-               len(_join_clean([old.get("Title_role", ""), old.get("Field_of_study", "")])):
+            if len(_join_clean([c.get("Title", ""), c.get("Role", ""), c.get("Field_of_study", "")])) > \
+               len(_join_clean([old.get("Title", ""), old.get("Role", ""), old.get("Field_of_study", "")])):
                 dedup[key] = c
             elif len(c.get("page_text", "")) > len(old.get("page_text", "")):
                 dedup[key] = c
@@ -1431,8 +1502,10 @@ def extract_contacts_from_html(html: str, page_url: str) -> List[Dict]:
         normalized.append({
             "Full_name": c.get("Full_name", "") or "",
             "Email": c.get("Email", "") or "",
-            "Title_role": c.get("Title_role", "") or "",
-            "Field_of_study": c.get("Field_of_study", "") or "",
+            "Title": c.get("Title", "") or "",  # Academic title (Prof., Dr., etc.)
+            "Role": c.get("Role", "") or "",  # Position/function (Head of..., Researcher in..., etc.)
+            "Field_of_study": c.get("Field_of_study", "") or "",  # Individual's field (keyword-based)
+            "University_Field_of_Study": c.get("University_Field_of_Study", "") or "",  # Department/institute field
             "page_text": c.get("page_text", "") or "",
             "source_url": c.get("source_url", page_url),
         })
