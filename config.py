@@ -128,6 +128,12 @@ EXCLUDE_URL_PATTERNS = [
     "/contact", "/contacts", "/contact-us", "/get-in-touch",  # Generic contact pages
     "/about/contact", "/general-enquiries", "/enquiries",
     "/admissions", "/apply", "/library", "/accommodation",
+    # Administrative/organizational contact pages (not research staff)
+    "/ansprechpersonen", "/ansprechpartner",  # German: contact persons
+    "/organigramm", "/organization",  # Organizational charts
+    "/dekanat", "/deanery",  # Dean's office
+    "/verwaltung", "/administration",  # Administration
+    "/sekretariat", "/secretariat",  # Secretariat
     ".pdf", ".jpg", ".png", ".zip", ".doc", ".ppt"
 ]
 

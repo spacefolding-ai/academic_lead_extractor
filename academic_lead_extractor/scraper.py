@@ -358,60 +358,66 @@ async def ai_find_staff_page_links(html: str, base_url: str, client, ai_model: s
     if not prioritized_links:
         return []
     
-    # Build prompt for AI with emphasis on subdomains
-    prompt = f"""You are an expert at finding staff/team directory pages on university websites.
+    # Build prompt for AI with emphasis on subdomains and departments
+    prompt = f"""You are an expert at finding department pages and staff directories on university websites.
 
-I need to identify which links from this university homepage lead to staff/team/people directories for ICP-relevant departments:
+I need to identify which links from this university homepage lead to ICP-relevant departments and their staff pages:
+
+**TARGET DOMAINS (ICP):**
 - Power electronics & power systems
 - Energy systems, storage & renewable energy
 - Electrical engineering & electrical machines
-- Mechatronics, robotics & embedded systems
+- Mechatronics, robotics & embedded systems (control, automation, sensors)
 - Smart grids & battery systems
 
 **Homepage:** {base_url}
 
-**IMPORTANT:** Look especially for:
-1. **Subdomain links** (e.g., etit.kit.edu, ipe.kit.edu, energy.kit.edu) - these are often department websites
-2. Links containing: "institute", "faculty", "department", "center", "group"
-3. Links to pages with staff/team/people listings
+**CRITICAL:** Find THREE types of pages:
+1. **Direct staff listing pages** - Pages with "Team", "Staff", "People", "Mitarbeiter" containing contact listings
+2. **Department/Institute homepages** - Main pages for institutes/departments (we'll automatically explore these for staff links)
+3. **Subdomain department sites** - Subdomains like etit.kit.edu, ipe.kit.edu, energy.kit.edu
+
+**PRIORITIZE (in order):**
+1. Subdomain URLs for relevant departments (e.g., etit.kit.edu, ipe.kit.edu, iam.kit.edu, eti.kit.edu)
+2. Institute/department URLs containing: /institut, /institute, /department, /faculty, /group, /lab, /center
+3. Direct staff pages containing: /staff, /team, /people, /mitarbeiter, /personnel
 
 **Available Links (URL → Link Text):**
 {chr(10).join([f'{i+1}. {link["url"]} → "{link["text"]}"' for i, link in enumerate(prioritized_links[:80])])}
 
-**Task:**
-Return a JSON object with a "staff_pages" array containing the URLs that are most likely to lead to or contain:
-1. Staff/team directory pages (listing multiple people with contact info)
-2. ICP-relevant department homepages (that will have staff links)
-3. Research institute pages with team listings
-
-**PRIORITIZE:**
-- Subdomain URLs (iam.kit.edu, itep.kit.edu, energy.kit.edu, ipe.kit.edu, etc.)
-- Institute/faculty pages (electrical engineering, energy, mechatronics)
-- Direct staff directory links
-
-**INCLUDE:**
-- "Team", "Staff", "People", "Mitarbeiter", "Personnel", "Employees"
-- "Institute", "Faculty", "Department", "Research Group"
-- Energy-related institutes/centers
-- Electrical engineering departments
+**INCLUDE these departments/institutes:**
+- Electrical Engineering, Elektrotechnik, ETIT
+- Power Electronics, Leistungselektronik
+- Energy Systems, Energiesysteme
+- Control Systems, Regelungstechnik
+- Mechatronics, Robotics, Automation
+- Smart Grid, Microgrids
+- Battery Systems, Electric Vehicles
 
 **EXCLUDE:**
-- Generic navigation pages
-- Student pages, alumni directories
-- Job postings, career pages
-- Administrative support only
-- Non-ICP departments (law, medicine, business, architecture, etc.)
+- Law, medicine, business, architecture, humanities
+- Pure mathematics, chemistry, biology (unless engineering-focused)
+- Student/alumni/career pages
+- Generic university admin pages
+- Administrative contact pages (Ansprechpersonen, Dekanat, Verwaltung)
+- Organizational/management pages (not research staff)
 
-Return ONLY valid JSON with format:
+**Task:**
+Return a JSON object with "staff_pages" array. Each entry should have:
+- url: The full URL to explore
+- reason: Brief explanation (mention if it's a department homepage vs direct staff page)
+
 {{
   "staff_pages": [
-    {{"url": "https://etit.kit.edu/", "reason": "Electrical Engineering faculty subdomain"}},
-    {{"url": "https://energy.kit.edu/team", "reason": "Energy Center staff page"}},
-    {{"url": "https://ipe.kit.edu/", "reason": "Power Electronics Institute subdomain"}}
+    {{"url": "https://etit.kit.edu/", "reason": "Electrical Engineering faculty subdomain - will explore for staff"}},
+    {{"url": "https://www.eti.kit.edu/", "reason": "Electrotechnical Institute - will explore for team pages"}},
+    {{"url": "https://ipe.kit.edu/", "reason": "Power Electronics Institute subdomain"}},
+    {{"url": "https://www.kit.edu/iam/", "reason": "Institute for Hybrid and Electric Vehicles"}},
+    {{"url": "https://www.kit.edu/staff", "reason": "Direct staff directory page"}}
   ]
 }}
 
-Return 5-20 most promising URLs (prioritize subdomains). If no good candidates found, return empty array."""
+Return 5-25 most promising URLs. Prioritize subdomains and institute pages over generic staff directories."""
 
     try:
         # Retry logic
@@ -539,6 +545,66 @@ def looks_like_staff_page(text: str, url: str) -> bool:
             if len(text) < 200:  # Profile titles are typically under 200 chars
                 if DEBUG:
                     print(f"   ✅ INDIVIDUAL PROFILE PAGE detected (name in title): '{text[:80]}'")
+                return True
+    
+    return False
+
+
+def looks_like_department_page(text: str, url: str) -> bool:
+    """
+    Detect department/institute/research group homepages that should be explored for staff.
+    These pages typically have their own staff/team pages that we need to discover.
+    """
+    text_l = text.lower()
+    url_l = url.lower()
+    
+    # URL patterns for departments/institutes (multilingual)
+    dept_url_patterns = [
+        # English
+        '/institut', '/institute', '/faculty', '/department', '/school',
+        '/group', '/lab', '/laboratory', '/center', '/centre',
+        # German
+        '/fachgebiet', '/lehrstuhl', '/arbeitsgruppe', '/fachbereich', '/abteilung',
+        # French
+        '/laboratoire', '/équipe', '/département',
+        # Italian  
+        '/dipartimento', '/laboratorio',
+        # Spanish
+        '/departamento', '/grupo',
+    ]
+    
+    # Title keywords (look for "Institute for X", "Department of Y", etc.)
+    dept_title_keywords = [
+        # English
+        'institute for', 'institute of', 'faculty of', 'department of', 'school of',
+        'research group', 'research center', 'research centre', 'laboratory',
+        # German
+        'institut für', 'institut für', 'lehrstuhl für', 'fachgebiet',
+        'arbeitsgruppe', 'forschungsgruppe', 'fachbereich',
+        # French
+        'institut', 'laboratoire', 'département', 'équipe de recherche',
+        # Italian
+        'istituto', 'dipartimento', 'gruppo di ricerca',
+        # Spanish
+        'instituto', 'departamento', 'grupo de investigación',
+    ]
+    
+    # Check URL - strong signal
+    for pattern in dept_url_patterns:
+        if pattern in url_l:
+            # Exclude if it's already a staff page within department
+            if not any(staff_kw in url_l for staff_kw in ['/staff', '/people', '/team', '/mitarbeiter', '/personnel']):
+                if DEBUG:
+                    print(f"   🏛️ DEPARTMENT PAGE detected (URL pattern): {url}")
+                return True
+    
+    # Check title - moderate signal
+    for keyword in dept_title_keywords:
+        if keyword in text_l:
+            # Additional validation: should be a homepage-like title
+            if len(text) < 150:  # Department titles are usually concise
+                if DEBUG:
+                    print(f"   🏛️ DEPARTMENT PAGE detected (title keyword): '{text[:80]}'")
                 return True
     
     return False
@@ -740,8 +806,9 @@ class StaffCrawler:
                 if DEBUG:
                     print(f"   ⚠️  AI found no staff pages, will use keyword discovery fallback")
 
-        # Detect potential staff pages OR subdomain homepages
+        # Detect potential staff pages, department pages, OR subdomain homepages
         is_staff_page = looks_like_staff_page(title, url)
+        is_department_page = looks_like_department_page(title, url)
         
         # If not detected by regex but AI profile detection is enabled, check with AI
         # This is slower but more accurate for edge cases (disabled by default for performance)
@@ -772,10 +839,10 @@ class StaffCrawler:
             not any(x in url.lower() for x in ['karriere', 'job', 'student', 'alumni', 'news', 'press'])  # Exclude non-academic pages
         )
         
-        if DEBUG and (is_subdomain_homepage or "mitarbeitende" in url.lower()):
+        if DEBUG and (is_subdomain_homepage or is_department_page or "mitarbeitende" in url.lower()):
             print(f"   🔍 Checking URL: {url}")
             print(f"      Title: {title[:60]}")
-            print(f"      is_staff_page: {is_staff_page}, is_subdomain_homepage: {is_subdomain_homepage}")
+            print(f"      is_staff_page: {is_staff_page}, is_department_page: {is_department_page}, is_subdomain_homepage: {is_subdomain_homepage}")
         
         # Process if it's a staff page
         if is_staff_page:
@@ -810,6 +877,11 @@ class StaffCrawler:
             self.contacts.extend(extracted)
             if DEBUG:
                 print(f"      → Extracted {len(extracted)} contacts")
+        elif is_department_page and depth < MAX_CRAWL_DEPTH:
+            # Department/institute homepage - continue exploring for staff pages
+            if DEBUG:
+                print(f"   🏛️  DEPARTMENT PAGE - will explore for staff links: {url}")
+            # Don't extract contacts here - wait for actual staff pages within department
         elif is_subdomain_homepage and depth < MAX_CRAWL_DEPTH:
             # Subdomain homepage - continue exploring but don't extract contacts yet
             if DEBUG:
