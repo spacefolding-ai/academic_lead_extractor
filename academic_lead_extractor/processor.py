@@ -5,6 +5,7 @@ Main pipeline for processing universities and extracting contacts.
 import asyncio
 import os
 import time
+import json
 import pandas as pd
 import aiohttp
 from aiohttp import ClientSession
@@ -148,6 +149,9 @@ async def main(university_urls=None, use_ai=True, client=None, ai_model="gpt-4o-
             if "source_url" in contact and "Source_URL" not in contact:
                 contact["Source_URL"] = contact["source_url"]
         
+        # Keep original contacts for JSON (with Publications as list)
+        original_contacts = [c.copy() for c in contacts]
+        
         df = pd.DataFrame(contacts)
         
         # Smart deduplication: Keep contact with highest AI_Score for each email
@@ -162,7 +166,26 @@ async def main(university_urls=None, use_ai=True, client=None, ai_model="gpt-4o-
         if before_dedup > after_dedup:
             print(f"   📧 Removed {before_dedup - after_dedup} duplicate emails (kept highest AI scores)")
         
-        # Format Publications as comma-separated string for better CSV readability
+        # Get deduplicated emails for JSON export
+        deduplicated_emails = set(df["Email"].tolist())
+        
+        # Filter original contacts to match deduplicated set (keep Publications as list)
+        json_contacts = []
+        seen_emails = set()
+        # Sort by AI_Score to keep highest scoring duplicates (same logic as CSV)
+        sorted_originals = sorted(original_contacts, key=lambda x: x.get("AI_Score", 0), reverse=True)
+        for contact in sorted_originals:
+            email = contact.get("Email", "")
+            if email in deduplicated_emails and email not in seen_emails:
+                seen_emails.add(email)
+                # Clean up internal fields not needed in export
+                export_contact = {k: v for k, v in contact.items() if k not in ["page_text"]}
+                # Ensure Publications is a list (not string)
+                if "Publications" in export_contact and isinstance(export_contact["Publications"], str):
+                    export_contact["Publications"] = [p.strip() for p in export_contact["Publications"].split(",") if p.strip()]
+                json_contacts.append(export_contact)
+        
+        # Format Publications as comma-separated string for CSV readability only
         if "Publications" in df.columns:
             df["Publications"] = df["Publications"].apply(lambda x: ", ".join(x) if isinstance(x, list) and x else "")
         
@@ -177,9 +200,22 @@ async def main(university_urls=None, use_ai=True, client=None, ai_model="gpt-4o-
             if col not in df.columns:
                 df[col] = ""
         
-        filename = os.path.join(output_dir, f"{country}.csv")
-        df.to_csv(filename, sep=";", index=False, columns=columns)
-        print(f"✅ {country}: {len(df)} contacts → {filename}")
+        # Save CSV
+        csv_filename = os.path.join(output_dir, f"{country}.csv")
+        df.to_csv(csv_filename, sep=";", index=False, columns=columns)
+        
+        # Save JSON with structured data
+        json_filename = os.path.join(output_dir, f"{country}.json")
+        with open(json_filename, 'w', encoding='utf-8') as f:
+            json.dump({
+                "country": country,
+                "extraction_date": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "total_contacts": len(json_contacts),
+                "contacts": json_contacts
+            }, f, indent=2, ensure_ascii=False)
+        
+        print(f"✅ {country}: {len(df)} contacts → {csv_filename}")
+        print(f"   📄 JSON: {json_filename}")
         total_saved += len(df)
     
     # Calculate total pipeline time
@@ -187,6 +223,7 @@ async def main(university_urls=None, use_ai=True, client=None, ai_model="gpt-4o-
     
     print(f"\n🎉 TOTAL: {total_saved} contacts across {len(by_country)} countries")
     print(f"💾 Results saved to: {output_dir}/")
+    print(f"   📊 Format: CSV (semicolon-separated) + JSON (structured data)")
     
     # Final summary with timing and costs
     print(f"\n" + "="*70)
