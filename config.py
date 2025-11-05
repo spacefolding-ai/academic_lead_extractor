@@ -86,7 +86,7 @@ KEYWORDS_EXCLUDE = [
 # ---------------------------
 
 # Import multilingual keywords from separate file for better maintainability
-from keywords_multilingual import KEYWORDS_BY_LANGUAGE, COUNTRY_LANGUAGE
+from keywords_multilingual import KEYWORDS_BY_LANGUAGE, COUNTRY_LANGUAGE, FIELD_KEYWORDS
 
 # ---------------------------
 # SCRAPER CONFIGURATION
@@ -190,34 +190,25 @@ TITLE_HINT_CLASSES = [
     ".funktion", ".stelle", ".academic-title", ".rank"
 ]
 
-# Field of study keywords for classification
-FIELD_KEYWORDS = {
-    "Power Electronics": [
-        "power electronics", "power converter", "inverter", "rectifier",
-        "dc-dc converter", "ac-dc", "switching power", "pwm"
-    ],
-    "Electric Drives & Motors": [
-        "electric drives", "motor control", "electrical machines",
-        "pmsm", "induction motor", "servo drive", "motion control"
-    ],
-    "Energy Systems": [
-        "energy systems", "renewable energy", "smart grid", "microgrid",
-        "grid integration", "power systems", "hvdc", "energy storage"
-    ],
-    "Battery & Storage": [
-        "battery", "bms", "battery management", "energy storage",
-        "lithium-ion", "battery pack", "cell balancing"
-    ],
-    "E-Mobility & EVs": [
-        "e-mobility", "electric vehicle", "ev", "powertrain",
-        "traction drive", "charging", "vehicle electrification"
-    ],
-    "Embedded & Real-Time": [
-        "embedded systems", "real-time", "microcontroller", "firmware",
-        "hardware-in-the-loop", "hil", "rapid prototyping", "digital twin"
-    ],
-    "Control Systems": [
-        "control systems", "automatic control", "digital control",
-        "model predictive control", "mpc", "robust control", "optimal control"
-    ]
-}
+# ---------------------------
+# FIELD CLASSIFICATION KEYWORDS
+# ---------------------------
+# Note: FIELD_KEYWORDS has been moved to keywords_multilingual.py
+# for better organization and maintainability.
+# It is imported above from: keywords_multilingual import FIELD_KEYWORDS
+
+# Additional universal technical terms recognized in all languages
+UNIVERSAL_TECH_TERMS = [
+    # Acronyms and standards (recognized globally)
+    "pmsm", "bldc", "igbt", "mosfet", "bms", "mppt", "ev", "hev", "phev",
+    "dc-dc", "ac-dc", "pwm", "soc", "mmc", "thd", "der", "dsp", "hil",
+    "c-hil", "p-hil", "pll", "mpc", "hvdc", "ups",
+    # Software/simulation tools
+    "matlab", "simulink", "plecs", "psim", "pscad", "rtds", "dspace",
+    "opal-rt", "speedgoat", "rt-lab", "hypersim", "ltspice", "digsilent",
+    "powerfactory", "etap", "neplan", "opendss", "simscape",
+    # Standards
+    "iec 61850", "ieee 1547", "iso 26262",
+    # Technologies
+    "vehicle-to-grid", "v2g", "grid-to-vehicle", "g2v", "anti-islanding",
+]

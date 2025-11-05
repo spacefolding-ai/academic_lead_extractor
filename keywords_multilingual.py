@@ -661,3 +661,428 @@ COUNTRY_LANGUAGE = {
     "United Kingdom": "English"
 }
 
+# ---------------------------
+# FIELD CLASSIFICATION KEYWORDS (27+ LANGUAGES)
+# Used for categorizing research into specific fields
+# ---------------------------
+
+
+FIELD_KEYWORDS = {
+    "Power Electronics": [
+        # English
+        "power electronics", "power converter", "inverter", "rectifier",
+        "dc-dc converter", "ac-dc", "switching power", "pwm",
+        # German
+        "leistungselektronik", "leistungselektronisch", "stromrichter",
+        "wechselrichter", "gleichrichter", "umrichter", "wandler",
+        # French
+        "électronique de puissance", "convertisseur", "onduleur", "redresseur",
+        # Italian
+        "elettronica di potenza", "convertitore", "inverter", "raddrizzatore",
+        # Spanish
+        "electrónica de potencia", "convertidor", "inversor", "rectificador",
+        # Portuguese
+        "eletrônica de potência", "conversor", "inversor", "retificador",
+        # Dutch
+        "vermogenselektronica", "converter", "omvormer",
+        # Polish
+        "elektronika mocy", "przetwornica", "falownik",
+        # Swedish
+        "kraftelektronik", "omvandlare", "växelriktare",
+        # Czech
+        "výkonová elektronika", "měnič", "střídač",
+        # Norwegian
+        "kraftelektronikk", "omformer", "likeretter",
+        # Danish
+        "effektelektronik", "konverter", "likeretter",
+        # Finnish
+        "tehoelektroniikka", "muunnin", "vaihtosuuntaaja",
+        # Greek
+        "ηλεκτρονικά ισχύος", "μετατροπέας", "αναστροφέας",
+        # Turkish
+        "güç elektroniği", "dönüştürücü", "evirici",
+        # Romanian
+        "electronică de putere", "convertizor", "invertor",
+        # Hungarian
+        "teljesítményelektronika", "átalakító", "inverter",
+        # Bulgarian
+        "силова електроника", "преобразувател", "инвертор",
+        # Ukrainian
+        "силова електроніка", "перетворювач", "інвертор",
+        # Croatian/Serbian
+        "energetska elektronika", "pretvarač", "inverter",
+        # Slovak
+        "výkonová elektronika", "menič", "striedač",
+        # Lithuanian
+        "galios elektronika", "keitiklis", "inverteris",
+        # Latvian
+        "jaudas elektronika", "pārveidotājs", "invertors",
+        # Estonian
+        "võimelektroonika", "muundur", "inverter",
+        # Slovenian
+        "močnostna elektronika", "pretvornik", "inverter",
+        # Albanian
+        "elektronika e fuqisë", "konvertues", "inverter",
+        # Macedonian
+        "моќна електроника", "конвертор", "инвертор"
+    ],
+    "Electric Drives & Motors": [
+        # English
+        "electric drives", "motor control", "electrical machines",
+        "pmsm", "induction motor", "servo drive", "motion control",
+        "electromagnetic design", "machine design",
+        # German
+        "elektrische antriebe", "elektrisch antrieb", "antriebssysteme",
+        "motorsteuerung", "elektrische maschinen", "elektromotor",
+        "elektromagnetisch", "elektromagnetische auslegung", "maschinenauslegung",
+        # French
+        "entraînements électriques", "commande moteur", "machines électriques",
+        "moteur électrique", "moteur asynchrone",
+        # Italian
+        "azionamenti elettrici", "controllo motore", "macchine elettriche",
+        "motore elettrico", "motore asincrono",
+        # Spanish
+        "accionamientos eléctricos", "control de motor", "máquinas eléctricas",
+        "motor eléctrico", "motor asíncrono",
+        # Portuguese
+        "acionamentos elétricos", "controle motor", "máquinas elétricas",
+        "motor elétrico", "motor assíncrono",
+        # Dutch
+        "elektrische aandrijvingen", "motorbesturing", "elektrische machines",
+        # Polish
+        "napędy elektryczne", "sterowanie silnikiem", "maszyny elektryczne",
+        # Swedish
+        "elektriska drivsystem", "motorstyrning", "elektriska maskiner",
+        # Czech
+        "elektrické pohony", "řízení motoru", "elektrické stroje",
+        # Norwegian
+        "elektriske drivkrefter", "motorstyring", "elektriske maskiner",
+        # Danish
+        "elektriske drev", "motorkontrol", "elektriske maskiner",
+        # Finnish
+        "sähköiset käytöt", "moottorin ohjaus", "sähkökoneet",
+        # Greek
+        "ηλεκτρικές κινήσεις", "έλεγχος κινητήρα", "ηλεκτρικές μηχανές",
+        # Turkish
+        "elektrik tahrik", "motor kontrolü", "elektrik makineleri",
+        # Romanian
+        "antrenamente electrice", "control motor", "mașini electrice",
+        # Hungarian
+        "villamos hajtások", "motorvezérlés", "villamos gépek",
+        # Bulgarian
+        "електрически задвижвания", "управление на двигател", "електрически машини",
+        # Ukrainian
+        "електричні приводи", "керування двигуном", "електричні машини",
+        # Croatian/Serbian
+        "električni pogoni", "upravljanje motorom", "električni strojevi",
+        # Slovak
+        "elektrické pohony", "riadenie motora", "elektrické stroje",
+        # Lithuanian
+        "elektros pavaros", "variklio valdymas", "elektros mašinos",
+        # Estonian
+        "elektrilised ajamid", "mootori juhtimine", "elektrimasinad"
+    ],
+    "Energy Systems": [
+        # English
+        "energy systems", "renewable energy", "smart grid", "microgrid",
+        "grid integration", "power systems", "hvdc", "energy storage",
+        # German
+        "energiesysteme", "energiesystem", "erneuerbare energie",
+        "netze", "energienetze", "stromnetz", "energieversorgung",
+        # French
+        "systèmes énergétiques", "énergie renouvelable", "réseau intelligent",
+        "microréseau", "intégration réseau", "systèmes électriques",
+        # Italian
+        "sistemi energetici", "energia rinnovabile", "rete intelligente",
+        "microrete", "integrazione rete", "sistemi di potenza",
+        # Spanish
+        "sistemas energéticos", "energía renovable", "red inteligente",
+        "microrred", "integración red", "sistemas eléctricos",
+        # Portuguese
+        "sistemas energéticos", "energia renovável", "rede inteligente",
+        "microrede", "integração rede", "sistemas elétricos",
+        # Dutch
+        "energiesystemen", "hernieuwbare energie", "slim net",
+        "microgrid", "netintegratie",
+        # Polish
+        "systemy energetyczne", "energia odnawialna", "inteligentna sieć",
+        "mikrosieć", "integracja sieci",
+        # Swedish
+        "energisystem", "förnybar energi", "smart elnät",
+        "mikronät", "nätintegration",
+        # Czech
+        "energetické systémy", "obnovitelná energie", "inteligentní síť",
+        "mikrosíť", "integrace sítě",
+        # Norwegian
+        "energisystemer", "fornybar energi", "smart nett", "mikronett",
+        # Danish
+        "energisystemer", "vedvarende energi", "smart net", "mikronet",
+        # Finnish
+        "energiajärjestelmät", "uusiutuva energia", "älykäs verkko", "mikroverkko",
+        # Greek
+        "ενεργειακά συστήματα", "ανανεώσιμη ενέργεια", "έξυπνο δίκτυο", "μικροδίκτυο",
+        # Turkish
+        "enerji sistemleri", "yenilenebilir enerji", "akıllı şebeke", "mikro şebeke",
+        # Romanian
+        "sisteme energetice", "energie regenerabilă", "rețea inteligentă", "microre țea",
+        # Hungarian
+        "energiarendszerek", "megújuló energia", "okos hálózat", "mikrohálózat",
+        # Bulgarian
+        "енергийни системи", "възобновяема енергия", "интелигентна мрежа", "микромрежа",
+        # Ukrainian
+        "енергетичні системи", "відновлювана енергія", "розумна мережа", "мікромережа",
+        # Croatian/Serbian
+        "energetski sustavi", "obnovljiva energija", "pametna mreža", "mikromreža",
+        # Slovak
+        "energetické systémy", "obnoviteľná energia", "inteligentná sieť", "mikrosieť",
+        # Lithuanian
+        "energijos sistemos", "atsinaujinanti energija", "išmanioji tinklas", "mikrotinklas",
+        # Estonian
+        "energiasüsteemid", "taastuv energia", "tark võrk", "mikrovõrk"
+    ],
+    "Battery & Storage": [
+        # English
+        "battery", "bms", "battery management", "energy storage",
+        "lithium-ion", "battery pack", "cell balancing",
+        # German
+        "batterie", "batteriemanagement", "energiespeicher",
+        "akkumulator", "akku", "batteriesystem",
+        # French
+        "batterie", "gestion batterie", "stockage énergie",
+        "lithium-ion", "pack batterie",
+        # Italian
+        "batteria", "gestione batterie", "accumulo energia",
+        "litio-ione", "pacco batterie",
+        # Spanish
+        "batería", "gestión baterías", "almacenamiento energía",
+        "litio-ión", "paquete baterías",
+        # Portuguese
+        "bateria", "gestão baterias", "armazenamento energia",
+        "lítio-íon", "pacote baterias",
+        # Dutch
+        "batterij", "batterijbeheer", "energieopslag",
+        "lithium-ion", "batterijpakket",
+        # Polish
+        "bateria", "zarządzanie bateriami", "magazynowanie energii",
+        "lit-jonowy", "pakiet baterii",
+        # Swedish
+        "batteri", "batterihantering", "energilagring",
+        "litiumjon", "batteripaket",
+        # Czech
+        "baterie", "správa baterií", "ukládání energie",
+        "lithium-iontový", "bateriový balík",
+        # Norwegian
+        "batteri", "batteristyring", "energilagring",
+        # Danish
+        "batteri", "batteristyring", "energilagring",
+        # Finnish
+        "akku", "akkujen hallinta", "energian varastointi",
+        # Greek
+        "μπαταρία", "διαχείριση μπαταριών", "αποθήκευση ενέργειας",
+        # Turkish
+        "batarya", "batarya yönetimi", "enerji depolama",
+        # Romanian
+        "baterie", "gestionarea bateriilor", "stocare energie",
+        # Hungarian
+        "akkumulátor", "akkumulátor kezelés", "energiatárolás",
+        # Bulgarian
+        "батерия", "управление на батерии", "съхранение на енергия",
+        # Ukrainian
+        "батарея", "управління батареями", "зберігання енергії",
+        # Croatian/Serbian
+        "baterija", "upravljanje baterijama", "pohrana energije",
+        # Slovak
+        "batéria", "správa batérií", "skladovanie energie",
+        # Lithuanian
+        "baterija", "baterijų valdymas", "energijos saugojimas",
+        # Estonian
+        "aku", "akude haldamine", "energia salvestamine"
+    ],
+    "E-Mobility & EVs": [
+        # English
+        "e-mobility", "electric vehicle", "ev", "powertrain",
+        "traction drive", "charging", "vehicle electrification",
+        # German
+        "elektromobilität", "elektrofahrzeug", "fahrzeugelektrifizierung",
+        "hybrid", "antriebsstrang", "ladetechnik",
+        # French
+        "électromobilité", "véhicule électrique", "chaîne cinématique",
+        "propulsion", "recharge", "électrification véhicule",
+        # Italian
+        "elettromobilità", "veicolo elettrico", "gruppo motopropulsore",
+        "trazione", "ricarica", "elettrificazione veicolo",
+        # Spanish
+        "electromovilidad", "vehículo eléctrico", "tren motriz",
+        "tracción", "recarga", "electrificación vehículo",
+        # Portuguese
+        "eletromobilidade", "veículo elétrico", "trem de força",
+        "tração", "recarga", "eletrificação veículo",
+        # Dutch
+        "elektromobiliteit", "elektrisch voertuig", "aandrijflijn",
+        "tractie", "opladen", "elektrificatie voertuig",
+        # Polish
+        "elektromobilność", "pojazd elektryczny", "układ napędowy",
+        "napęd trakcyjny", "ładowanie", "elektryfikacja pojazdu",
+        # Swedish
+        "elektromobilitet", "elfordon", "drivlina",
+        "traktion", "laddning", "elektrifiering fordon",
+        # Czech
+        "elektromobilita", "elektrické vozidlo", "hnací ústrojí",
+        "trakční pohon", "nabíjení", "elektrifikace vozidla",
+        # Norwegian
+        "elektromobilitet", "elektrisk kjøretøy", "drivlinje",
+        # Danish
+        "elektromobilitet", "elektrisk køretøj", "drivlinje",
+        # Finnish
+        "sähköliikenne", "sähköajoneuvo", "voimansiirto",
+        # Greek
+        "ηλεκτροκίνηση", "ηλεκτρικό όχημα", "κινητήριο σύστημα",
+        # Turkish
+        "elektrikli mobilite", "elektrikli araç", "güç aktarma",
+        # Romanian
+        "mobilitate electrică", "vehicul electric", "transmisie",
+        # Hungarian
+        "elektromos mobilitás", "elektromos jármű", "hajtáslánc",
+        # Bulgarian
+        "електромобилност", "електрическо превозно средство", "задвижване",
+        # Ukrainian
+        "електромобільність", "електромобіль", "трансмісія",
+        # Croatian/Serbian
+        "elektromobilnost", "električno vozilo", "pogonski sklop",
+        # Slovak
+        "elektromobilita", "elektrické vozidlo", "pohonná sústava",
+        # Lithuanian
+        "elektromobilumas", "elektrinis automobilis", "pavaros įrenginys",
+        # Estonian
+        "elektromobiilsus", "elektrisõiduk", "jõuülekanne"
+    ],
+    "Embedded & Real-Time": [
+        # English
+        "embedded systems", "real-time", "microcontroller", "firmware",
+        "hardware-in-the-loop", "hil", "rapid prototyping", "digital twin",
+        # German
+        "eingebettete systeme", "echtzeit", "mikrocontroller",
+        "digitaler zwilling", "echtzeitsimulation",
+        # French
+        "systèmes embarqués", "temps réel", "microcontrôleur",
+        "jumeau numérique", "simulation temps réel",
+        # Italian
+        "sistemi embedded", "tempo reale", "microcontrollore",
+        "gemello digitale", "simulazione tempo reale",
+        # Spanish
+        "sistemas embebidos", "tiempo real", "microcontrolador",
+        "gemelo digital", "simulación tiempo real",
+        # Portuguese
+        "sistemas embarcados", "tempo real", "microcontrolador",
+        "gêmeo digital", "simulação tempo real",
+        # Dutch
+        "embedded systemen", "realtime", "microcontroller",
+        "digitale tweeling", "realtime simulatie",
+        # Polish
+        "systemy wbudowane", "czas rzeczywisty", "mikrokontroler",
+        "cyfrowy bliźniak", "symulacja czasu rzeczywistego",
+        # Swedish
+        "inbyggda system", "realtid", "mikrokontroller",
+        "digital tvilling", "realtidssimulering",
+        # Czech
+        "vestavěné systémy", "reálný čas", "mikrokontrolér",
+        "digitální dvojče", "simulace reálného času",
+        # Norwegian
+        "innebygde systemer", "sanntid", "mikrokontroller",
+        # Danish
+        "indlejrede systemer", "realtid", "mikrokontroller",
+        # Finnish
+        "sulautetut järjestelmät", "reaaliaikainen", "mikro-ohjain",
+        # Greek
+        "ενσωματωμένα συστήματα", "πραγματικός χρόνος", "μικροελεγκτής",
+        # Turkish
+        "gömülü sistemler", "gerçek zamanlı", "mikrodenetleyici",
+        # Romanian
+        "sisteme embedded", "timp real", "microcontroler",
+        # Hungarian
+        "beágyazott rendszerek", "valós idejű", "mikrokontroller",
+        # Bulgarian
+        "вградени системи", "реално време", "микроконтролер",
+        # Ukrainian
+        "вбудовані системи", "реальний час", "мікроконтролер",
+        # Croatian/Serbian
+        "ugrađeni sistemi", "stvarno vrijeme", "mikrokontroler",
+        # Slovak
+        "vstavaný systémy", "reálny čas", "mikrokontrolér",
+        # Lithuanian
+        "įterptinės sistemos", "realaus laiko", "mikrovaldiklis",
+        # Estonian
+        "süsteemsed süsteemid", "reaalajas", "mikrokontroller"
+    ],
+    "Control Systems": [
+        # English
+        "control systems", "automatic control", "digital control",
+        "model predictive control", "mpc", "robust control", "optimal control",
+        # German
+        "regelungstechnik", "regelung", "steuerung", "regler",
+        "regelungssysteme", "automatisierung", "steuerungstechnik",
+        # French
+        "systèmes de contrôle", "contrôle automatique", "contrôle numérique",
+        "commande prédictive", "contrôle robuste",
+        # Italian
+        "sistemi di controllo", "controllo automatico", "controllo digitale",
+        "controllo predittivo", "controllo robusto",
+        # Spanish
+        "sistemas de control", "control automático", "control digital",
+        "control predictivo", "control robusto",
+        # Portuguese
+        "sistemas de controle", "controle automático", "controle digital",
+        "controle preditivo", "controle robusto",
+        # Dutch
+        "regelsystemen", "automatische besturing", "digitale regeling",
+        "voorspellende regeling", "robuuste regeling",
+        # Polish
+        "systemy sterowania", "automatyka", "sterowanie cyfrowe",
+        "sterowanie predykcyjne", "sterowanie odporne",
+        # Swedish
+        "styrsystem", "automatisk styrning", "digital styrning",
+        "prediktiv styrning", "robust styrning",
+        # Czech
+        "řídicí systémy", "automatické řízení", "digitální řízení",
+        "prediktivní řízení", "robustní řízení",
+        # Norwegian
+        "kontrollsystemer", "automatisk kontroll", "digital kontroll",
+        "prediktiv kontroll", "robust kontroll",
+        # Danish
+        "kontrolsystemer", "automatisk kontrol", "digital kontrol",
+        "prædiktiv kontrol", "robust kontrol",
+        # Finnish
+        "säätöjärjestelmät", "automaattinen säätö", "digitaalinen säätö",
+        "ennustava säätö", "vankka säätö",
+        # Greek
+        "συστήματα ελέγχου", "αυτόματος έλεγχος", "ψηφιακός έλεγχος",
+        "προβλεπτικός έλεγχος", "εύρωστος έλεγχος",
+        # Turkish
+        "kontrol sistemleri", "otomatik kontrol", "dijital kontrol",
+        "öngörülü kontrol", "gürbüz kontrol",
+        # Romanian
+        "sisteme de control", "control automat", "control digital",
+        # Croatian/Serbian
+        "kontrolni sistemi", "automatska kontrola", "digitalna kontrola",
+        # Slovak
+        "riadiace systémy", "automatické riadenie", "digitálne riadenie",
+        # Slovenian
+        "krmilni sistemi", "avtomatsko krmiljenje", "digitalno krmiljenje",
+        # Hungarian
+        "vezérlőrendszerek", "automatikus vezérlés", "digitális vezérlés",
+        # Bulgarian
+        "системи за управление", "автоматично управление", "цифрово управление",
+        # Ukrainian
+        "системи керування", "автоматичне керування", "цифрове керування",
+        # Lithuanian
+        "valdymo sistemos", "automatinis valdymas", "skaitmeninis valdymas",
+        # Latvian
+        "valdības sistēmas", "automātiskā vadība", "digitālā vadība",
+        # Estonian
+        "juhtimissüsteemid", "automaatjuhtimine", "digitaaljuhtimine",
+        # Albanian
+        "sistemet e kontrollit", "kontroll automatik", "kontroll dixhital",
+        # Macedonian
+        "контролни системи", "автоматска контрола", "дигитална контрола"
+    ]
+}

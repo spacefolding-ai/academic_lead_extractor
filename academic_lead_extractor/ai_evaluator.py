@@ -189,12 +189,20 @@ NAME CLEANING RULES:
 ROLE EXTRACTION RULES:
 - Extract detailed position/role information from the provided text
 - Include department/institute name if mentioned
-- Examples:
-  * "Head of Research Group, Institute of Applied Materials – Energy Storage Systems"
-  * "Professor and Group Leader"
+- **IMPORTANT**: Do NOT extract academic titles (Prof., Dr., M.Sc., etc.) as roles
+- Only extract job functions and positions
+- Examples of CORRECT roles:
+  * "Head of Research Group, Institute of Applied Materials"
+  * "Group Leader"
   * "Scientific Officer, KIT Energy Center"
   * "Researcher, Smart Grids & Energy Markets group"
-- If no role is found in text, leave as empty string
+  * "Institute Director"
+  * "Senior Researcher in Power Electronics"
+- Examples of INCORRECT roles (these are titles, not roles):
+  * "Prof. Dr.-Ing." ← This is a TITLE, not a role!
+  * "M.Sc." ← This is a TITLE, not a role!
+  * "Dr." ← This is a TITLE, not a role!
+- If only academic title is found (no job function), leave role as empty string
 
 IMPORTANT SCORING GUIDELINES:
 - Use the FULL 0.0-1.0 scale. Don't be overly conservative.
