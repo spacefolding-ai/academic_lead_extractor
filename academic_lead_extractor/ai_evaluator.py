@@ -171,7 +171,7 @@ Return a JSON object with a "contacts" array. Each contact should have:
 - reason (string, brief explanation)
 - field (string, specific technical domain)
 - cleaned_name (string, extract and clean the person's name from the input)
-- role (string, extract and clean the person's role/position from the text - e.g., "Head of Research Group", "Professor", "Group Leader")
+- role (string, extract role/position EXACTLY as written on the website - keep original language, don't translate or modify)
 
 NAME CLEANING RULES:
 - Extract only the person's actual name (first and last name)
@@ -187,22 +187,37 @@ NAME CLEANING RULES:
 - Example: "Dr. Henning Meyerhenke, (Tel." → "Dr. Henning Meyerhenke"
 
 ROLE EXTRACTION RULES:
-- Extract detailed position/role information from the provided text
-- Include department/institute name if mentioned
+- **CRITICAL**: Extract role/position EXACTLY as it appears in the text - DO NOT modify, translate, or enhance
+- Copy the exact text from the website without changes
+- Keep original language (German, English, etc.) - DO NOT translate
+- Include department/institute name if it's part of the role description on the page
 - **IMPORTANT**: Do NOT extract academic titles (Prof., Dr., M.Sc., etc.) as roles
-- Only extract job functions and positions
-- Examples of CORRECT roles:
-  * "Head of Research Group, Institute of Applied Materials"
-  * "Group Leader"
-  * "Scientific Officer, KIT Energy Center"
-  * "Researcher, Smart Grids & Energy Markets group"
-  * "Institute Director"
-  * "Senior Researcher in Power Electronics"
-- Examples of INCORRECT roles (these are titles, not roles):
-  * "Prof. Dr.-Ing." ← This is a TITLE, not a role!
-  * "M.Sc." ← This is a TITLE, not a role!
-  * "Dr." ← This is a TITLE, not a role!
-- If only academic title is found (no job function), leave role as empty string
+- Only extract job functions and positions as they are written
+- If role appears in German: keep it in German (e.g., "Elektromagnetische Auslegung")
+- If role includes organization: keep it as written (e.g., "Researcher, Smart Grids & Energy Markets group")
+
+Examples of CORRECT extraction (exact text from website):
+  ✅ "Elektromagnetische Auslegung" (German, as written on page)
+  ✅ "Regelung leistungselektronischer Systeme" (German, exact text)
+  ✅ "Head of Research Group, Institute of Applied Materials" (English, exact text)
+  ✅ "Systemsteuerung und -analyse" (German with hyphen, as written)
+  ✅ "Scientific Officer, KIT Energy Center" (exact role from page)
+  ✅ "Researcher, Smart Grids & Energy Markets group" (exact text with group name)
+
+Examples of INCORRECT extraction:
+  ❌ "Prof. Dr.-Ing." ← This is a TITLE, not a role!
+  ❌ "M.Sc." ← This is a TITLE, not a role!
+  ❌ "Power Electronics" ← Too generic, not a job function
+  ❌ "Electromagnetic Design" ← DO NOT translate German "Elektromagnetische Auslegung"
+  ❌ "Robert Bosch GmbH" ← This is an ORGANIZATION name, not a role
+  ❌ "Daimler AG" ← This is an ORGANIZATION name, not a role
+
+ORGANIZATION vs ROLE:
+- If text contains ONLY organization name (Bosch, Daimler, etc.): leave role EMPTY
+- Organization names are NOT roles: "Robert Bosch GmbH" is not a role
+- Company affiliations go elsewhere, not in role field
+
+If only academic title is found (no job function), leave role as empty string
 
 IMPORTANT SCORING GUIDELINES:
 - Use the FULL 0.0-1.0 scale. Don't be overly conservative.

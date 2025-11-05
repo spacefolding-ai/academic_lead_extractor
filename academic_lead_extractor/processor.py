@@ -149,7 +149,18 @@ async def main(university_urls=None, use_ai=True, client=None, ai_model="gpt-4o-
                 contact["Source_URL"] = contact["source_url"]
         
         df = pd.DataFrame(contacts)
+        
+        # Smart deduplication: Keep contact with highest AI_Score for each email
+        before_dedup = len(df)
+        if "AI_Score" in df.columns:
+            # Sort by AI_Score descending, then deduplicate (keeps first = highest score)
+            df = df.sort_values('AI_Score', ascending=False)
         df = df.drop_duplicates(subset=["Email"], keep="first")
+        after_dedup = len(df)
+        
+        # Report duplicates removed
+        if before_dedup > after_dedup:
+            print(f"   📧 Removed {before_dedup - after_dedup} duplicate emails (kept highest AI scores)")
         
         # Format Publications as comma-separated string for better CSV readability
         if "Publications" in df.columns:
